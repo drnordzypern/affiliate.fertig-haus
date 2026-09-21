@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --color-stone-50: #faf8f4;
+  --color-stone-100: #f3efe6;
+  --color-stone-200: #e7e0d2;
+  --color-stone-300: #d6cbb4;
+  --color-charcoal-900: #211f1a;
+  --color-charcoal-700: #3a362e;
+  --color-charcoal-500: #63594a;
+
+  --color-olive-900: #333a24;
+  --color-olive-700: #4b5533;
+  --color-olive-600: #5b6640;
+  --color-olive-500: #6f7c4e;
+  --color-olive-100: #e9ecdd;
+  --color-olive-50: #f2f4ea;
+
+  /* Darkened from #a8532f: that shade only reached 4.27:1 against
+     terracotta-100, below WCAG AA's 4.5:1 for the small/normal text this
+     tone is used at (PreviewBadge, StatusRegion warnings). */
+  --color-terracotta-600: #904526;
+  --color-terracotta-100: #f4e3d8;
+
+  --background: var(--color-stone-50);
+  --foreground: var(--color-charcoal-900);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-stone-50: var(--color-stone-50);
+  --color-stone-100: var(--color-stone-100);
+  --color-stone-200: var(--color-stone-200);
+  --color-stone-300: var(--color-stone-300);
+
+  --color-charcoal-900: var(--color-charcoal-900);
+  --color-charcoal-700: var(--color-charcoal-700);
+  --color-charcoal-500: var(--color-charcoal-500);
+
+  --color-olive-900: var(--color-olive-900);
+  --color-olive-700: var(--color-olive-700);
+  --color-olive-600: var(--color-olive-600);
+  --color-olive-500: var(--color-olive-500);
+  --color-olive-100: var(--color-olive-100);
+  --color-olive-50: var(--color-olive-50);
+
+  --color-terracotta-600: var(--color-terracotta-600);
+  --color-terracotta-100: var(--color-terracotta-100);
+
+  /* System font stacks — no external font request at build or run time. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
+    "Times New Roman", ui-serif, serif;
+}
+
+* {
+  border-color: var(--color-stone-200);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+::selection {
+  background: var(--color-olive-100);
+  color: var(--color-olive-900);
+}
+
+/* Visible, high-contrast focus state for keyboard navigation. */
+:focus-visible {
+  outline: 2px solid var(--color-olive-700);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  transition: top 0.2s ease;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
