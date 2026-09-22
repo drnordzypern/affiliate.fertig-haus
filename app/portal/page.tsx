@@ -6,6 +6,7 @@ import { StatusRegion } from "@/components/ui/StatusRegion";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { PortalNav } from "@/components/portal/PortalNav";
+import { LogoutButton } from "@/components/portal/LogoutButton";
 
 export const metadata: Metadata = {
   title: "Partnerportal",
@@ -13,6 +14,18 @@ export const metadata: Metadata = {
     "Vorschau der künftigen Informationsarchitektur des Fertig Haus Partnerportals. Keine echten Empfehlungs- oder Provisionsdaten.",
 };
 
+/**
+ * This page still renders only the static preview information
+ * architecture — no real Partner/lead/commission data. It does not read
+ * the Partner-session cookie or gate itself on it: cookie *presence* is
+ * not proof of a live, authenticated SalesChain session (SalesChain has
+ * no `whoami` endpoint yet), so treating it as an auth gate here would be
+ * exactly the false authority this integration must not claim. The
+ * cookie's only current use is the HttpOnly bearer token the logout BFF
+ * route reads server-side. A future protected Partner-resource request
+ * must authorize itself against SalesChain on every call, not rely on
+ * this cookie's mere presence.
+ */
 export default function PortalPage() {
   return (
     <Section className="pt-16 pb-24 sm:pt-20">
@@ -23,16 +36,20 @@ export default function PortalPage() {
         </h1>
         <p className="max-w-2xl text-base leading-relaxed text-charcoal-500">
           Diese Ansicht zeigt die geplante Struktur des Partnerportals. Sie
-          ist eine visuelle Vorschau ohne Anmeldung, ohne echte
-          Partnerdaten und ohne Verbindung zu SalesChain.
+          ist eine visuelle Vorschau ohne echte Partnerdaten und ohne
+          Verbindung zu SalesChain.
         </p>
       </div>
 
       <StatusRegion tone="warning" className="mt-6 max-w-2xl">
-        Diese Seite erfordert keinen Login und zeigt keine echten
-        Empfehlungen, Leads oder Provisionen. Alle Inhalte dienen
-        ausschließlich der Darstellung der künftigen Struktur.
+        Diese Seite zeigt keine echten Empfehlungen, Leads oder Provisionen.
+        Alle Inhalte dienen ausschließlich der Darstellung der künftigen
+        Struktur.
       </StatusRegion>
+
+      <div className="mt-6">
+        <LogoutButton />
+      </div>
 
       <div className="mt-12 flex flex-col gap-10 sm:flex-row">
         <PortalNav />
