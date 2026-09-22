@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   acceptInvitation,
+  checkPartnerSession,
   logoutPartnerSession,
   redeemBootstrapToken,
   SalesChainError,
@@ -295,6 +296,93 @@ test("logoutPartnerSession rejects extra response fields", async () => {
   await expect(logoutPartnerSession({ partnerSessionToken: VALID_TOKEN })).rejects.toMatchObject({
     kind: "contract",
   });
+});
+
+test("checkPartnerSession sends a GET with the bearer token and no body", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: "AUTHENTICATED" }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const result = await checkPartnerSession({ partnerSessionToken: VALID_TOKEN });
+
+  expect(result).toBe(true);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe("https://api.saleschain.example/v1/partner-sessions/me");
+  expect(init.method).toBe("GET");
+  expect(init.headers.authorization).toBe(`Bearer ${VALID_TOKEN}`);
+  expect(init.body).toBeUndefined();
+});
+
+test("checkPartnerSession returns false for a 401", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ message: "no" }, 401)));
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false for a 404 (feature disabled)", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ message: "no" }, 404)));
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false for a 429", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ message: "no" }, 429)));
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false for a 5xx", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 503)));
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false for a 200 with extra fields (fails closed on contract drift)", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(jsonResponse({ status: "AUTHENTICATED", partnerId: "x" }))
+  );
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false for a 200 with the wrong status literal", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ status: "OK" })));
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false for a non-JSON 200 response", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not json", { status: 200 })));
+  expect(await checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).toBe(false);
+});
+
+test("checkPartnerSession returns false on a network failure, and never throws", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("private network detail")));
+  await expect(checkPartnerSession({ partnerSessionToken: VALID_TOKEN })).resolves.toBe(false);
+});
+
+test("checkPartnerSession returns false on a timeout, and never throws", async () => {
+  vi.useFakeTimers();
+  const fetchMock = vi.fn(
+    (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => {
+          const abortError = new Error("aborted");
+          abortError.name = "AbortError";
+          reject(abortError);
+        });
+      })
+  );
+  vi.stubGlobal("fetch", fetchMock);
+
+  const promise = checkPartnerSession({ partnerSessionToken: VALID_TOKEN });
+  const assertion = expect(promise).resolves.toBe(false);
+  await vi.advanceTimersByTimeAsync(10_000);
+  await assertion;
+});
+
+test("checkPartnerSession never logs or throws the raw token on failure", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("boom")));
+  const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  await checkPartnerSession({ partnerSessionToken: VALID_TOKEN });
+
+  expect(consoleSpy).not.toHaveBeenCalled();
+  consoleSpy.mockRestore();
 });
 
 test("SalesChainError never carries the raw upstream response body", async () => {

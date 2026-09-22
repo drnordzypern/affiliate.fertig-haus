@@ -90,7 +90,7 @@ async function readBounded(response: Response, maxBytes: number): Promise<string
 
 async function callSalesChain(
   path: string,
-  init: { body?: unknown; authorization?: string }
+  init: { method?: "GET" | "POST"; body?: unknown; authorization?: string }
 ): Promise<unknown> {
   const baseUrl = getSalesChainBaseUrl();
   const url = `${baseUrl}${path}`;
@@ -108,7 +108,7 @@ async function callSalesChain(
 
   try {
     const response = await fetch(url, {
-      method: "POST",
+      method: init.method ?? "POST",
       headers,
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
       signal: controller.signal,
@@ -207,5 +207,30 @@ export async function logoutPartnerSession(input: {
 
   if (!isRecord(json) || !hasExactKeys(json, ["status"]) || json.status !== "LOGGED_OUT") {
     throw new SalesChainError("contract", "Unexpected logout response");
+  }
+}
+
+/**
+ * DNL1-63: the Affiliate BFF's server-side bearer-session validation check
+ * (`GET /v1/partner-sessions/me`) — the non-destructive counterpart to
+ * `logoutPartnerSession` above. Every failure mode collapses to `false`:
+ * a non-2xx status, a malformed/extra-field response, a timeout, or a
+ * network error are all treated identically as "not authenticated". This
+ * function never throws and never returns anything but a boolean — there
+ * is no partial-trust result, and callers must not attempt to distinguish
+ * *why* a session was rejected from this return value alone.
+ */
+export async function checkPartnerSession(input: {
+  partnerSessionToken: string;
+}): Promise<boolean> {
+  try {
+    const json = await callSalesChain("/v1/partner-sessions/me", {
+      method: "GET",
+      authorization: `Bearer ${input.partnerSessionToken}`,
+    });
+
+    return isRecord(json) && hasExactKeys(json, ["status"]) && json.status === "AUTHENTICATED";
+  } catch {
+    return false;
   }
 }

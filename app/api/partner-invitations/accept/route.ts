@@ -11,6 +11,7 @@ import {
   clearPartnerSessionCookie,
   setPartnerSessionCookie,
 } from "@/lib/saleschain/session-cookie";
+import { isSameOriginRequest } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +24,14 @@ function jsonResponse(body: unknown, status: number): Response {
     status,
     headers: {
       "content-type": "application/json",
-      "cache-control": "no-store",
+      "cache-control": "private, no-store",
+      "x-robots-tag": "noindex, nofollow, noarchive, nosnippet, noimageindex",
     },
   });
 }
 
 const invalidRequest = () => jsonResponse({ status: "INVALID_REQUEST" }, 400);
+const forbiddenOrigin = () => jsonResponse({ status: "FORBIDDEN" }, 403);
 const unavailableInvitation = () => jsonResponse({ status: "UNAVAILABLE" }, 404);
 const upstreamUnavailable = () => jsonResponse({ status: "UNAVAILABLE" }, 503);
 const upstreamContractError = () => jsonResponse({ status: "UNAVAILABLE" }, 502);
@@ -125,6 +128,10 @@ function mapErrorToResponse(error: unknown): Response {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (!isSameOriginRequest(request)) {
+    return forbiddenOrigin();
+  }
+
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
     return invalidRequest();

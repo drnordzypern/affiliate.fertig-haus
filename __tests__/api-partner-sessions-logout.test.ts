@@ -22,6 +22,15 @@ const { PARTNER_SESSION_COOKIE_NAME } = await import("@/lib/saleschain/session-c
 
 const VALID_SESSION_TOKEN = "C".repeat(43);
 
+function makeRequest(origin: string | null = "http://localhost"): Request {
+  const headers = new Headers();
+  if (origin !== null) headers.set("origin", origin);
+  return new Request("http://localhost/api/partner-sessions/logout", {
+    method: "POST",
+    headers,
+  });
+}
+
 beforeEach(() => {
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("SALESCHAIN_API_BASE_URL", "https://api.saleschain.example");
@@ -32,6 +41,33 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+test("rejects a request with no Origin header and never touches the cookie", async () => {
+  cookieStore.set(PARTNER_SESSION_COOKIE_NAME, VALID_SESSION_TOKEN, {});
+  cookieStore.sets.length = 0;
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  const response = await POST(makeRequest(null));
+
+  expect(response.status).toBe(403);
+  expect(await response.json()).toEqual({ status: "FORBIDDEN" });
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(cookieStore.sets).toHaveLength(0);
+});
+
+test("rejects a cross-origin request and never touches the cookie", async () => {
+  cookieStore.set(PARTNER_SESSION_COOKIE_NAME, VALID_SESSION_TOKEN, {});
+  cookieStore.sets.length = 0;
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  const response = await POST(makeRequest("https://evil.example"));
+
+  expect(response.status).toBe(403);
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(cookieStore.sets).toHaveLength(0);
 });
 
 test("forwards the session token as a Bearer header to SalesChain logout", async () => {
@@ -47,7 +83,7 @@ test("forwards the session token as a Bearer header to SalesChain logout", async
   vi.stubGlobal("fetch", fetchMock);
   cookieStore.sets.length = 0; // reset after seeding the initial cookie value
 
-  const response = await POST();
+  const response = await POST(makeRequest());
 
   expect(fetchMock).toHaveBeenCalledTimes(1);
   const [url, init] = fetchMock.mock.calls[0];
@@ -65,7 +101,7 @@ test("always clears the cookie, even when the upstream logout call fails", async
   cookieStore.sets.length = 0;
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("upstream unavailable")));
 
-  const response = await POST();
+  const response = await POST(makeRequest());
 
   expect(response.status).toBe(200);
   const body = await response.json();
@@ -85,7 +121,7 @@ test("always clears the cookie even when SalesChain reports the session as alrea
     vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "not found" }), { status: 404 }))
   );
 
-  const response = await POST();
+  const response = await POST(makeRequest());
 
   expect(response.status).toBe(200);
   const clearCall = cookieStore.sets.find(([name]) => name === PARTNER_SESSION_COOKIE_NAME);
@@ -98,7 +134,7 @@ test("a malformed cookie fails closed, is never forwarded, and is still cleared"
   const fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
 
-  const response = await POST();
+  const response = await POST(makeRequest());
 
   expect(fetchMock).not.toHaveBeenCalled();
   expect(await response.json()).toEqual({ status: "LOGGED_OUT" });
@@ -113,7 +149,7 @@ test("clears the cookie when upstream returns malformed success JSON", async () 
     vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "OTHER" }), { status: 200 }))
   );
 
-  const response = await POST();
+  const response = await POST(makeRequest());
 
   expect(await response.json()).toEqual({ status: "LOGGED_OUT" });
   expect(cookieStore.sets[0][1]).toBe("");
@@ -137,7 +173,7 @@ test("clears the cookie when upstream logout times out", async () => {
     )
   );
 
-  const responsePromise = POST();
+  const responsePromise = POST(makeRequest());
   await vi.advanceTimersByTimeAsync(10_000);
   const response = await responsePromise;
 
@@ -149,8 +185,8 @@ test("repeated logout with no cookie present is safe and never calls SalesChain"
   const fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
 
-  const firstResponse = await POST();
-  const secondResponse = await POST();
+  const firstResponse = await POST(makeRequest());
+  const secondResponse = await POST(makeRequest());
 
   expect(fetchMock).not.toHaveBeenCalled();
   expect(firstResponse.status).toBe(200);
@@ -159,7 +195,10 @@ test("repeated logout with no cookie present is safe and never calls SalesChain"
   expect(await secondResponse.json()).toEqual({ status: "LOGGED_OUT" });
 });
 
-test("sets Cache-Control: no-store", async () => {
-  const response = await POST();
-  expect(response.headers.get("cache-control")).toBe("no-store");
+test("sets Cache-Control: private, no-store and X-Robots-Tag noindex", async () => {
+  const response = await POST(makeRequest());
+  expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("x-robots-tag")).toBe(
+    "noindex, nofollow, noarchive, nosnippet, noimageindex"
+  );
 });
