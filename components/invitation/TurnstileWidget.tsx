@@ -10,6 +10,7 @@ declare global {
         container: HTMLElement,
         options: {
           sitekey: string;
+          action: "partner-invitation-acceptance";
           callback: (token: string) => void;
           "error-callback"?: () => void;
         }
@@ -46,6 +47,7 @@ export function TurnstileWidget({
     }
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
+      action: "partner-invitation-acceptance",
       callback: onToken,
       "error-callback": onError,
     });
