@@ -4,7 +4,15 @@ import Home from "@/app/page";
 import SoFunktioniertEsPage from "@/app/so-funktioniert-es/page";
 import PartnerWerdenPage from "@/app/partner-werden/page";
 import PortalPage from "@/app/portal/page";
-import InvitationAcceptPage from "@/app/partner/invitation/accept/page";
+import InvitationAcceptPage from "@/app/einladung/page";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+}));
+
+vi.mock("next/script", () => ({
+  default: () => null,
+}));
 
 afterEach(() => {
   cleanup();

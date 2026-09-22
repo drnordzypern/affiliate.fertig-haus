@@ -10,9 +10,11 @@ test("the architecture boundary document exists and states the key rules", () =>
 
   expect(doc).toMatch(/source of truth/i);
   expect(doc).toMatch(/same-origin.*BFF|BFF.*same-origin/i);
-  expect(doc).toMatch(/SalesChain credentials are server-only/i);
+  expect(doc).toMatch(/SalesChain tokens are server-only/i);
   expect(doc).toMatch(/URL fragments/i);
   expect(doc).toMatch(/No\s+database belongs in this repository/i);
+  expect(doc).toMatch(/Cookie presence is not.*proof of a live/i);
+  expect(doc).toMatch(/no `whoami` endpoint/i);
 });
 
 test(".env.example declares expected variable names with no values", () => {
@@ -28,6 +30,8 @@ test(".env.example declares expected variable names with no values", () => {
   }
 
   expect(env).toContain("SALESCHAIN_API_BASE_URL");
-  expect(env).toContain("SALESCHAIN_BFF_CREDENTIAL");
   expect(env).toContain("NEXT_PUBLIC_TURNSTILE_SITE_KEY");
+  // No shared secret: the approved public invitation/bootstrap endpoints
+  // don't define one, so this repository must not invent one.
+  expect(env).not.toContain("SALESCHAIN_BFF_CREDENTIAL");
 });

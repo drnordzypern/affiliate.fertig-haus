@@ -1,11 +1,46 @@
-import { expect, test } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { expect, test, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PortalPage from "@/app/portal/page";
+
+const { routerReplace } = vi.hoisted(() => ({ routerReplace: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: routerReplace }),
+}));
 
 test("portal preview shows the Vorschau label and no login form", () => {
   render(<PortalPage />);
   expect(screen.getByText("Vorschau")).toBeDefined();
   expect(screen.queryByRole("textbox", { name: /passwort|e-mail/i })).toBeNull();
+});
+
+test("portal renders a real, visible logout control that makes no network call on render", () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+  render(<PortalPage />);
+
+  expect(screen.getByRole("button", { name: /abmelden/i })).toBeDefined();
+  expect(fetchSpy).not.toHaveBeenCalled();
+
+  fetchSpy.mockRestore();
+});
+
+test("logout sends no bearer token or request body from the browser", async () => {
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(new Response(JSON.stringify({ status: "LOGGED_OUT" }), { status: 200 }));
+
+  render(<PortalPage />);
+  fireEvent.click(screen.getByRole("button", { name: /abmelden/i }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe("/api/partner-sessions/logout");
+  expect(init).toEqual({ method: "POST" });
+  expect(JSON.stringify(init)).not.toMatch(/authorization|bearer|token/i);
+  await waitFor(() => expect(routerReplace).toHaveBeenCalledWith("/"));
+
+  fetchMock.mockRestore();
 });
 
 test("portal preview shows no real-looking commission amounts", () => {
