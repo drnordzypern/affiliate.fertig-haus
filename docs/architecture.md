@@ -103,16 +103,69 @@ after a successful bootstrap redemption, and is otherwise only read to:
 
 - forward it as the `Authorization: Bearer` header to
   `app/api/partner-sessions/logout`, and
-- (optionally, in the future) decide a purely cosmetic initial redirect.
+- gate `app/portal/page.tsx` (see "Protected Partner dashboard" below).
 
 **Cookie presence is not, and must never be treated as, proof of a live,
 authenticated SalesChain session.** Every future request for real Partner
 data (referrals, commissions, profile) must independently authorize itself
 against SalesChain using this bearer token; it cannot rely on the cookie
-merely existing. `app/portal/page.tsx` documents this same boundary
-in-line and deliberately does not gate itself on cookie presence. A future
-`whoami` or Partner-resource endpoint on SalesChain is required before any
-authoritative session introspection can be implemented here.
+merely existing. Note also that the *only* bearer-authenticated SalesChain
+call this repository can make is `POST /v1/partner-sessions/logout`, which
+consumes the session — it cannot double as a non-destructive validity
+check. A future `whoami` or Partner-resource endpoint on SalesChain is
+required before any authoritative session introspection can be implemented
+here.
+
+## Protected Partner dashboard
+
+`app/portal/page.tsx` is an async Server Component gated on cookie
+presence: it reads the `partner_session` cookie via
+`lib/saleschain/session-cookie.ts#getPartnerSessionToken` (which already
+enforces the exact token shape) and calls `redirect("/einladung")` when it
+is absent or malformed. This is deliberately the *coarse* gate described in
+the "Known limitation" section above, not an authentication guarantee — it
+exists only so a browser with no session at all cannot reach the dashboard.
+Nothing rendered on `/portal` treats the cookie as proof of a live session,
+and the page renders no real Partner, referral, lead, or commission data —
+see "Known limitation: no referral/QR data source" below for why.
+
+Because there is no non-destructive way to invalidate a stale cookie
+server-side from a page render (Next.js only allows `cookies().set()` from
+a Server Action or Route Handler, never from a plain page render), a
+cookie that is present but no longer valid upstream is not proactively
+cleared by visiting `/portal` — it is only ever cleared by logout. This is
+an accepted, documented gap, not a silent one: closing it fully requires
+the same future SalesChain read endpoint referenced above.
+
+## Known limitation: no referral/QR data source
+
+SalesChain's bootstrap-redemption response is exactly
+`{ partnerSessionToken }` (see "Approved SalesChain contract" above) — no
+partner id, referral code, or profile data — and the only bearer-
+authenticated endpoint (`POST /v1/partner-sessions/logout`) returns only
+`{ status }`. There is therefore no existing, authenticated SalesChain
+endpoint this repository can call to obtain a Partner's referral URL, and
+no Affiliate-side configuration can substitute for it, since a referral URL
+is inherently per-Partner data only SalesChain can issue.
+`components/portal/ReferralLinkCard.tsx` therefore renders only an honest
+empty state and no QR code is generated (there is nothing to encode). A
+future bearer-authenticated SalesChain read endpoint — for example
+`GET /v1/partner-sessions/me` or an equivalent Partner-resource contract
+returning at least a referral URL/code — is required before this
+repository can implement a real referral link or QR code.
+
+## CSRF / same-origin protection
+
+`lib/security/same-origin.ts#isSameOriginRequest` is the CSRF defense for
+this repository's state-changing BFF routes (`app/api/partner-invitations/
+accept`, `app/api/partner-sessions/logout`). Both routes reject any request
+whose `Origin` header is missing or does not match the request's own
+resolved URL origin, with a generic `403 { status: "FORBIDDEN" }`, before
+any other processing (including cookie reads or SalesChain calls). This
+needs no configured allow-list: every modern browser attaches `Origin` to
+same-origin, non-GET/HEAD `fetch()` requests, not only cross-origin ones,
+so comparing it against the request's own URL is sufficient and portable
+across deployment hosts.
 
 ## Residual partial-failure limitation
 
@@ -135,8 +188,8 @@ cleanup without an upstream transactional or idempotent session contract.
 | --- | --- |
 | Partner application (`/partner-werden`) | Static preview UI only. Submit action is disabled. No API call. |
 | Invitation acceptance (`/einladung`; legacy alias `/partner/invitation/accept`) | Implemented. Reads the URL fragment, scrubs it, runs Turnstile, submits to the BFF. New invitation links use `/einladung#token=...`. |
-| Partner portal (`/portal`) | Static preview UI, plus a real logout control. No real Partner/lead/commission data; not gated on the session cookie (see "Known limitation" above). |
-| BFF routes | Implemented: `app/api/partner-invitations/accept`, `app/api/partner-sessions/logout`. |
+| Partner portal (`/portal`) | Implemented and protected: redirects to `/einladung` without a well-formed session cookie (coarse gate only — see "Known limitation" above). Real logout control. No real Partner/lead/commission data; referral link shows an honest empty state (see "Known limitation: no referral/QR data source"). |
+| BFF routes | Implemented: `app/api/partner-invitations/accept`, `app/api/partner-sessions/logout`. Both reject cross-origin requests (see "CSRF / same-origin protection"). |
 | SalesChain client | Implemented: `lib/saleschain/client.ts`, `lib/saleschain/config.ts`, `lib/saleschain/session-cookie.ts`. |
 
 ## Environment variables

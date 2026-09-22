@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { logoutPartnerSession } from "@/lib/saleschain/client";
 import { clearPartnerSessionCookie, getPartnerSessionToken } from "@/lib/saleschain/session-cookie";
+import { isSameOriginRequest } from "@/lib/security/same-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,11 @@ function jsonResponse(body: unknown, status: number): Response {
   });
 }
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
+  if (!isSameOriginRequest(request)) {
+    return jsonResponse({ status: "FORBIDDEN" }, 403);
+  }
+
   const cookieStore = await cookies();
   const partnerSessionToken = getPartnerSessionToken(cookieStore);
 

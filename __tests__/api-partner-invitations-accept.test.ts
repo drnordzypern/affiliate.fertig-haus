@@ -33,11 +33,20 @@ function jsonUpstreamResponse(body: unknown, status = 200) {
 
 function makeRequest(
   rawBody: string,
-  options: { contentType?: string; contentLength?: string; signal?: AbortSignal } = {}
+  options: {
+    contentType?: string;
+    contentLength?: string;
+    signal?: AbortSignal;
+    origin?: string | null;
+  } = {}
 ) {
   const headers = new Headers({ "content-type": options.contentType ?? "application/json" });
   if (options.contentLength !== undefined) {
     headers.set("content-length", options.contentLength);
+  }
+  const origin = options.origin === undefined ? "http://localhost" : options.origin;
+  if (origin !== null) {
+    headers.set("origin", origin);
   }
   return new Request("http://localhost/api/partner-invitations/accept", {
     method: "POST",
@@ -57,6 +66,36 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+});
+
+test("rejects a request with no Origin header, without calling SalesChain", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  const request = makeRequest(
+    JSON.stringify({ invitationToken: VALID_INVITATION_TOKEN, turnstileToken: "cf-token" }),
+    { origin: null }
+  );
+  const response = await POST(request);
+
+  expect(response.status).toBe(403);
+  expect(await response.json()).toEqual({ status: "FORBIDDEN" });
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(cookieStore.sets).toHaveLength(0);
+});
+
+test("rejects a cross-origin request, without calling SalesChain", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  const request = makeRequest(
+    JSON.stringify({ invitationToken: VALID_INVITATION_TOKEN, turnstileToken: "cf-token" }),
+    { origin: "https://evil.example" }
+  );
+  const response = await POST(request);
+
+  expect(response.status).toBe(403);
+  expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test("rejects a non-JSON content type with a generic 400, without calling SalesChain", async () => {
@@ -129,7 +168,7 @@ test("stops reading an oversized streamed body before JSON allocation", async ()
   });
   const request = new Request("http://localhost/api/partner-invitations/accept", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: "http://localhost" },
     body: stream,
     duplex: "half",
   } as RequestInit & { duplex: "half" });
