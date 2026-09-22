@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import CanonicalInvitationPage from "@/app/einladung/page";
 import { InvitationAcceptShell } from "@/components/invitation/InvitationAcceptShell";
 
 const { routerReplace } = vi.hoisted(() => ({ routerReplace: vi.fn() }));
@@ -18,6 +19,7 @@ vi.mock("next/script", () => ({
 
 type TurnstileRenderOptions = {
   sitekey: string;
+  action: "partner-invitation-acceptance";
   callback: (token: string) => void;
   "error-callback"?: () => void;
 };
@@ -76,6 +78,42 @@ test("scrubs the fragment before the Turnstile widget can initialize", async () 
   expect(replaceStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
     renderMock.mock.invocationCallOrder[0]
   );
+  expect(window.location.hash).toBe("");
+});
+
+test("initializes Turnstile with the fixed invitation-acceptance action", async () => {
+  window.history.pushState(null, "", `/einladung#token=${VALID_TOKEN}`);
+
+  render(<CanonicalInvitationPage />);
+
+  await waitFor(() => expect(renderMock).toHaveBeenCalledTimes(1));
+  expect(renderMock.mock.calls[0][1].action).toBe("partner-invitation-acceptance");
+});
+
+test("does not allow query or fragment input to override the Turnstile action", async () => {
+  window.history.pushState(
+    null,
+    "",
+    `/einladung?action=attacker-controlled#token=${VALID_TOKEN}`
+  );
+
+  const firstRender = render(<InvitationAcceptShell />);
+
+  await waitFor(() => expect(renderMock).toHaveBeenCalledTimes(1));
+  expect(renderMock.mock.calls[0][1].action).toBe("partner-invitation-acceptance");
+
+  firstRender.unmount();
+  renderMock.mockClear();
+  window.history.pushState(
+    null,
+    "",
+    `/einladung#token=${VALID_TOKEN}&action=attacker-controlled`
+  );
+
+  render(<InvitationAcceptShell />);
+
+  expect(screen.getByText(/keine gültige Einladung/i)).toBeDefined();
+  expect(renderMock).not.toHaveBeenCalled();
   expect(window.location.hash).toBe("");
 });
 
