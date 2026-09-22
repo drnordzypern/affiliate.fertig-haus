@@ -55,12 +55,14 @@ const SERVER_ONLY_SALESCHAIN_FILES = new Set([
 const BROWSER_FETCH_FILES = new Set([
   "components/invitation/InvitationAcceptShell.tsx",
   "components/portal/LogoutButton.tsx",
+  "components/site-access/LockAccessButton.tsx",
 ]);
 
 /** The only file allowed to read `window.location` (fragment token extraction / navigation). */
 const WINDOW_LOCATION_FILES = new Set([
   "components/invitation/InvitationAcceptShell.tsx",
   "components/portal/LogoutButton.tsx",
+  "components/site-access/LockAccessButton.tsx",
 ]);
 
 const browserFacingFiles = allSourceFiles.filter(

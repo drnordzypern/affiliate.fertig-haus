@@ -32,7 +32,7 @@ export function PortalNav() {
               >
                 {section.label}
                 <Badge tone="neutral" className="px-2 py-0.5 text-[0.65rem]">
-                  Bald verfügbar
+                  Nicht verfügbar
                 </Badge>
               </span>
             </li>

@@ -164,7 +164,7 @@ test("navigation labels unavailable modules clearly, without linking to a non-ex
   render(await PortalPage());
 
   const nav = screen.getByRole("navigation", { name: "Portalbereiche" });
-  const badges = screen.getAllByText("Bald verfügbar");
+  const badges = screen.getAllByText("Nicht verfügbar");
   expect(badges.length).toBeGreaterThan(0);
   for (const badge of badges) {
     expect(badge.closest("a")).toBeNull();

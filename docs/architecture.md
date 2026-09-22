@@ -259,6 +259,193 @@ RSC/Flight-shaped requests, but not on the initial full-page redirect.
 already prevents shared/proxy caching regardless of `Vary`, so this does
 not reopen the boundary.
 
+## Pre-launch site access boundary
+
+The entire Affiliate application is temporarily private: every page,
+every BFF/API route, and every RSC/Flight or framework data request
+requires a shared pre-launch password before any of it is delivered. This
+is unrelated to Partner authentication — it exists only because the
+complete SalesChain experience has not yet been approved for public
+launch — and it sits in front of everything else in this document,
+including the invitation flow and the DNL1-63 protections above.
+
+### Architecture
+
+`proxy.ts` (Next.js 16's Proxy — the renamed, Node.js-runtime-by-default
+successor to `middleware.ts`; see its own doc comment and
+`node_modules/next/dist/docs/.../proxy.md`) runs before any route is
+rendered:
+
+1. Reads the signed `af_access` cookie and verifies it
+   (`lib/site-access/cookie.ts`) against `AFFILIATE_SITE_ACCESS_SECRET`.
+2. If valid and unexpired, calls `NextResponse.next()` — the request
+   proceeds to the real app exactly as before, with nothing added.
+3. If invalid, absent, or configuration itself is unusable, it responds
+   **directly** — a hand-written HTML string
+   (`lib/site-access/page.ts`), never a Next.js page/layout render — for
+   page-shaped requests, or a generic JSON `401` for anything under
+   `/api/`. Neither path ever touches, imports, or renders any part of
+   the real application.
+
+Because this is a direct in-proxy response rather than a redirect, the
+browser's address bar never changes: whatever URL was requested — a
+protected page, an unknown path, or `/einladung#token=...` — is the URL
+the gate is served at and the URL that gets reloaded on success. This is
+also why invitation fragments are safe by construction: a fragment is
+never sent to any server by the browser regardless of this boundary, and
+because there is no redirect, the browser's own already-displayed
+fragment is never touched, dropped, or exposed to it either.
+
+### Route classification
+
+| Route | Behavior without the access cookie |
+| --- | --- |
+| `/robots.txt` | Public — excluded from the proxy `matcher` entirely; unaffected |
+| `/_next/static/*`, `/_next/image` | Excluded from the `matcher` (Next's own recommended pattern) — generic, non-per-request build output remains fetchable by URL; see "Honest limitations" below |
+| Every other path — `/`, `/partner-werden`, `/so-funktioniert-es`, `/einladung`, `/partner/invitation/accept`, `/portal`, any unknown/deep link | Neutral gate HTML, `401` (or `503` if configuration itself is invalid) |
+| Every `/api/*` route (`accept`, `logout`, `site-access/lock`) | Generic `{"status":"UNAUTHORIZED"}` JSON, `401` — never the HTML gate, and a `POST` body here is never interpreted as a password attempt |
+
+### Fail-closed configuration
+
+`lib/site-access/config.ts#getSiteAccessConfig()` returns `null` — never
+a fallback value — unless both `AFFILIATE_SITE_ACCESS_PASSWORD` (≥ 8,
+≤ 512 chars) and `AFFILIATE_SITE_ACCESS_SECRET` (≥ 32 chars) are present.
+`proxy.ts` treats `null` identically to "no correct password could ever
+be entered": every request is denied, in every environment, with no
+production-only carve-out — a preview/staging deployment with missing
+configuration is exactly as exposed as Production would be if this were
+environment-gated, so this boundary does not distinguish between them.
+
+### Password verification and the signed cookie
+
+- The submitted form is parsed strictly: `application/x-www-form-urlencoded`
+  only, exactly one field (`password`), ≤ 2048 request bytes, ≤ 512
+  password characters — extra fields, a duplicated `password` field, a
+  different content type, or an oversized body all fail the same generic
+  way (`lib/site-access/request.ts`).
+- The password is compared with `lib/site-access/password.ts#verifyPassword`:
+  both sides are SHA-256-hashed first, then compared with
+  `crypto.timingSafeEqual` — constant-time regardless of length or content
+  differences.
+- Every rejection reason (wrong password, malformed submission, missing
+  configuration) renders the same neutral page shape with only a generic
+  message — the response never distinguishes which check failed.
+- On success, `lib/site-access/cookie.ts#createSiteAccessCookieValue`
+  issues `<base64url {v,exp}>.<base64url HMAC-SHA-256 signature>` —
+  `HttpOnly`, `Secure` in Production, `SameSite=Lax`, `Path=/`, no
+  `Domain` (host-only), `Max-Age` of exactly 4 hours
+  (`SITE_ACCESS_MAX_AGE_SECONDS`). The payload carries no password, no
+  Partner/session/invitation data, and no identifier of any kind — only a
+  schema version and an expiry. Verification recomputes the signature in
+  constant time and independently checks the expiry on every request; a
+  forged, altered, or expired value fails exactly like a missing one.
+- This cookie is unrelated to, and never substitutes for,
+  `lib/saleschain/session-cookie.ts`'s Partner-session cookie.
+  Possessing it only means "this browser passed the pre-launch gate" —
+  `/portal` still independently requires its own real,
+  backend-confirmed SalesChain session check regardless of this cookie's
+  state (verified live; see "Adversarial verification" below).
+- "Zugang sperren" (`components/site-access/LockAccessButton.tsx`,
+  `app/api/site-access/lock/route.ts`) clears only this cookie via a
+  same-origin-checked `POST`, then does a full browser navigation home —
+  never the Partner-session cookie, never a client-side-only state change.
+
+### Rate limiting — honest limitation
+
+`lib/site-access/rate-limit.ts` bounds repeated wrong-password attempts
+per client IP (5 per 5-minute window) using an in-memory `Map`. **This is
+not globally durable.** This repository has no database, cache, or other
+shared-state layer by design, and none was added solely for this — a
+`Map` inside a Vercel serverless/edge function instance is not shared
+across other instances, regions, or cold starts, so an attacker
+distributing requests widely is not fully stopped by this alone. This is
+best-effort defense in depth, not the real control. **Recommendation:**
+enable Vercel Firewall or native Deployment Protection (see below) for
+durable, infrastructure-level rate limiting and access control.
+
+### Native Vercel protection
+
+Not accessed or changed in this task (explicitly out of scope). For the
+record:
+
+1. **Application-level protection (this change):** active in code,
+   fail-closed, requires no Vercel configuration beyond the two secrets
+   below.
+2. **Vercel infrastructure-level protection:** Vercel's own Deployment
+   Protection (password or Vercel-authentication protection at the edge,
+   ahead of this application entirely) would be a stronger additional
+   layer and should be enabled manually after this merges — it protects
+   even the static chunks this boundary cannot (see "Honest limitations").
+3. **Plan restriction:** whether the current Vercel plan includes
+   Deployment Protection was not checked (out of scope) — verify manually
+   before relying on it.
+4. **Manual post-merge checklist:** add `AFFILIATE_SITE_ACCESS_PASSWORD`
+   and `AFFILIATE_SITE_ACCESS_SECRET` to the Vercel project's environment
+   variables (Production, and Preview if those should also be gated);
+   deploy; verify the gate live; then separately evaluate enabling native
+   Deployment Protection.
+
+### Complete isolation from fertig-haus.net
+
+Nothing in this change reads, writes, or references the main
+`fertig-haus.net` site, its repository, its Vercel project, its DNS, or
+its Search Console/analytics configuration — this repository has no
+access to any of them. The `af_access` cookie is host-only (no `Domain`
+attribute is ever set, matching the existing `partner_session` cookie's
+own convention), so it is scoped to exactly the Affiliate host and is
+never sent to, or valid for, any other host including the apex domain,
+`www`, or a future subdomain that happens to share a parent zone.
+
+### Honest limitations
+
+- **Static build chunks remain fetchable.** `/_next/static/*` is excluded
+  from the proxy `matcher` (Next's own documented recommendation — gating
+  it risks breaking the app for authorized visitors). These files are
+  generic, hashed, non-per-request framework/build output, not
+  per-request application data; this is not claimed to be infrastructure-
+  level invisibility, only that no protected *content* is in them.
+- **A hostname can still be discovered** via DNS records or
+  certificate-transparency logs once a subdomain is connected, regardless
+  of this boundary. The security goal here is that no protected content
+  or application structure is obtainable without the password — not an
+  impossible guarantee that the hostname itself can never be observed to
+  exist.
+- **`noindex` + this boundary prevent future indexing, not past
+  indexing.** `robots.txt` was already restrictive before this change, so
+  nothing here should have been crawled; if anything was indexed earlier
+  regardless, that requires a manual Google Search Console removal
+  request — outside what code can fix.
+- **The `Vary: Cookie` gap noted above** (superseded by Next's own
+  routing `Vary` on a plain full-page request) applies identically here.
+
+### Adversarial verification
+
+Verified against a production build (`next build && next start`) with
+synthetic, test-only credentials (never a real Production value), plus
+automated tests in `__tests__/proxy.test.ts` and the `lib/site-access/*`
+test files:
+
+| Requirement | Result |
+| --- | --- |
+| Anonymous `/` returns only the neutral gate | ✅ `401`, body contains no app/brand content |
+| `/partner-werden`, `/so-funktioniert-es`, `/einladung`, `/portal` | ✅ all `401`, gate only, no page-specific content |
+| Unknown/deep link | ✅ `401`, gate only |
+| BFF/API requests (`accept`, `logout`, `site-access/lock`) | ✅ generic `401` JSON, never the HTML gate |
+| RSC/Flight-shaped request (`RSC: 1`, `_rsc` query) | ✅ `401`, no dashboard/app content in the body |
+| Googlebot, Bingbot, GPTBot, ClaudeBot, `facebookexternalhit` User-Agents | ✅ identical `401` for every one — no UA branching exists anywhere |
+| Wrong password | ✅ generic German message, no cookie set |
+| Oversized / wrong-content-type / extra-field submission | ✅ generic `400`, no cookie set |
+| Correct password | ✅ `200`, exactly one `Set-Cookie`, no plaintext password anywhere in the response |
+| Forged cookie (different secret) / tampered cookie / expired cookie | ✅ all fail closed to the gate |
+| Missing configuration | ✅ `503` (page) / `401` (API); correct password still cannot succeed |
+| "Zugang sperren" | ✅ clears the cookie; the same cookie value is rejected immediately after |
+| Site-access cookie alone vs. `/portal` | ✅ verified live: a valid site-access cookie with no real Partner session still gets `307` to `/einladung` — the two boundaries are fully independent |
+| Existing DNL1-63/Partner-session behavior | ✅ unchanged — full existing suite (`__tests__/portal.test.tsx`, `saleschain-client.test.ts`, `same-origin.test.ts`, etc.) still passes unmodified |
+| Private responses | ✅ `Cache-Control: private, no-store`, `Vary: Cookie`, `X-Robots-Tag`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP on every gate/deny response |
+| `robots.txt` / sitemap / feed | ✅ `robots.txt` unaffected; no sitemap/feed route exists (both resolve through the gate) |
+| Public HTML/JSON/JS contains no password, secret, or Partner data | ✅ confirmed by direct inspection of every response body in this pass |
+| Parent-domain isolation | ✅ no code, cookie, header, redirect, or configuration references `fertig-haus.net`'s apex/root/`www`, or any host other than this app's own |
+
 ## Residual partial-failure limitation
 
 After bootstrap redemption, the Affiliate BFF uses the newly issued session
@@ -283,6 +470,7 @@ cleanup without an upstream transactional or idempotent session contract.
 | Partner portal (`/portal`) | Implemented and protected: real server-side validation via SalesChain `GET /v1/partner-sessions/me`, redirects to `/einladung` on any non-`AUTHENTICATED` outcome. No real Partner/lead/commission data; referral link shows an honest empty state. See "Protected Partner dashboard" above. |
 | BFF routes | Implemented: `app/api/partner-invitations/accept`, `app/api/partner-sessions/logout`. Both reject cross-origin requests (see "CSRF / same-origin protection") and set `Cache-Control: private, no-store` / `X-Robots-Tag: noindex...`. |
 | SalesChain client | Implemented: `lib/saleschain/client.ts` (including `checkPartnerSession`), `lib/saleschain/config.ts`, `lib/saleschain/session-cookie.ts`. |
+| Pre-launch site access boundary | Implemented: `proxy.ts`, `lib/site-access/*`. Every route requires a shared password (`AFFILIATE_SITE_ACCESS_PASSWORD`) before any content — including this integration — is reachable. See "Pre-launch site access boundary" above. |
 
 ## Environment variables
 
