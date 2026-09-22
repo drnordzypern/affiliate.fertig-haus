@@ -45,7 +45,7 @@ token ever reaches browser JavaScript.
 
 ## Approved SalesChain contract
 
-Three endpoints, all already reviewed and merged upstream:
+Four endpoints, all already reviewed and merged upstream:
 
 - `POST /v1/public/partner-invitations/accept` — accepts
   `{ invitationToken, turnstileToken }`, returns
@@ -54,17 +54,30 @@ Three endpoints, all already reviewed and merged upstream:
 - `POST /v1/public/partner-sessions/bootstrap` — accepts
   `{ loginBootstrapToken }`, returns `{ partnerSessionToken }`.
 - `POST /v1/partner-sessions/logout` — `Authorization: Bearer <token>`,
-  returns `{ status: "LOGGED_OUT" }`.
+  returns `{ status: "LOGGED_OUT" }`. Consumes/revokes the session.
+- `GET /v1/partner-sessions/me` — `Authorization: Bearer <token>`,
+  returns exactly `{ status: "AUTHENTICATED" }` on success. The
+  **non-destructive** counterpart to logout (`saleschain-os` PR #45):
+  resolves the bearer token against the live `PartnerSession` row and its
+  Partner/Membership/User state — rejecting malformed, unknown, expired,
+  revoked, cross-tenant, inactive, or internal-demo identities, all as a
+  uniform generic `401` — without consuming, refreshing, or mutating
+  anything, and without any Programme-level authorization. A disabled
+  `PARTNER_SESSION_ENABLED` flag yields the same generic `404` as the
+  other Partner-session routes. See "Protected Partner dashboard" below
+  for how this repository uses it.
 
-All three tokens are 43-character base64url strings. None of these public
-endpoints define a shared secret for the BFF to authenticate itself with,
-so this repository does not have or need one — see `.env.example`, which
-only declares `SALESCHAIN_API_BASE_URL` (server-only) and
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY` (intentionally public).
+All three session/bootstrap tokens are 43-character base64url strings.
+None of these public/bearer endpoints define a shared secret for the BFF
+to authenticate itself with, so this repository does not have or need
+one — see `.env.example`, which only declares `SALESCHAIN_API_BASE_URL`
+(server-only) and `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (intentionally
+public).
 
-SalesChain has **no `whoami` endpoint and no Partner dashboard-data
-endpoint today.** This repository does not invent either. See "Known
-limitation" below.
+SalesChain still has **no Partner dashboard-data endpoint** (referral
+URL, profile, commissions, etc.) — only the narrow session-validation
+contract above. This repository does not invent one. See "Known
+limitation: no referral/QR data source" below.
 
 ## Security rules for the integration
 
@@ -94,77 +107,72 @@ limitation" below.
   establishment failed. See the Route Handlers for the exact
   400/404/502/503 mapping.
 
-## Known limitation: no live session validation
+## Known limitation: no Partner dashboard-data endpoint
 
-Because SalesChain does not yet expose a `whoami` or Partner-resource
-endpoint, **this repository cannot and does not validate that the Partner
-session cookie is still live.** The Partner-session cookie is set once,
-after a successful bootstrap redemption, and is otherwise only read to:
+SalesChain's session-validation endpoint (`GET /v1/partner-sessions/me`,
+above) answers only "is this bearer token a live Partner session" — it
+returns no email, name, Partner/Membership/Tenant/Programme id, or
+referral identifier by design. Every future request for real Partner
+business data (referrals, commissions, profile) still needs its own,
+separately-approved SalesChain contract; this repository does not invent
+one — see "Known limitation: no referral/QR data source" below.
 
-- forward it as the `Authorization: Bearer` header to
-  `app/api/partner-sessions/logout`, and
-- gate `app/portal/page.tsx` (see "Protected Partner dashboard" below).
+## Protected Partner dashboard
 
-**Cookie presence is not, and must never be treated as, proof of a live,
-authenticated SalesChain session.** Every future request for real Partner
-data (referrals, commissions, profile) must independently authorize itself
-against SalesChain using this bearer token; it cannot rely on the cookie
-merely existing. Note also that the *only* bearer-authenticated SalesChain
-call this repository can make is `POST /v1/partner-sessions/logout`, which
-consumes the session — it cannot double as a non-destructive validity
-check. A future `whoami` or Partner-resource endpoint on SalesChain is
-required before any authoritative session introspection can be implemented
-here.
+`app/portal/page.tsx` performs real, server-side, non-destructive session
+validation before rendering anything: it reads the `partner_session`
+cookie (`lib/saleschain/session-cookie.ts#getPartnerSessionToken`, which
+already enforces the exact token shape) and, only if a well-formed value
+is present, forwards it server-to-server as `Authorization: Bearer
+<token>` to SalesChain's `GET /v1/partner-sessions/me`
+(`lib/saleschain/client.ts#checkPartnerSession`). The dashboard renders
+if and only if that call returns exactly `{ status: "AUTHENTICATED" }`;
+every other outcome — no cookie, a malformed cookie, a `401`/`404`/`429`/
+`5xx` response, a malformed/extra-field `200` body, a timeout, a network
+error, or even an unexpected exception from the check itself — redirects
+to `/einladung` before any dashboard markup, layout, or navigation
+renders. `checkPartnerSession` never throws (every failure mode already
+resolves to `false`), and the page wraps the call in `try/catch` anyway
+as defense in depth on this security-critical boundary.
 
-## Protected Partner dashboard: blocked (DNL1-63)
+**This closes a real, previously-shipped defect.** An earlier revision of
+this page treated cookie *presence/shape* alone as sufficient
+(`getPartnerSessionToken` returning a well-formed-looking token) and
+rendered the dashboard whenever that check passed — any caller could send
+an arbitrary 43-character base64url value as the `partner_session` cookie
+without ever completing the invitation/bootstrap flow, and the dashboard
+rendered for exactly that forged input (proven live during that
+review). A subsequent, intermediate revision closed the hole the only way
+possible at the time — an unconditional redirect, since SalesChain then
+exposed no non-destructive way to verify a token (`logout` consumes the
+very session it would check) — and reported that gap as a backend-contract
+blocker. SalesChain's `saleschain-os` PR #45 added exactly the endpoint
+that blocker named, closing it.
 
-`app/portal/page.tsx` **unconditionally redirects to `/einladung`** and
-renders no dashboard content at all. It does not read the
-`partner_session` cookie, and it does not branch on cookie presence,
-shape, User-Agent, or request type.
-
-An earlier revision of this page gated the dashboard on cookie
-*presence/shape* only (`getPartnerSessionToken` returning a
-well-formed-looking token) and rendered the dashboard whenever that check
-passed. Per the mandatory private-application boundary in Jira `DNL1-63`,
-that was a release-blocking defect, not an acceptable interim state: a
-well-formed cookie shape is not server-side Partner authorization — any
-caller can send an arbitrary 43-character base64url value as the
-`partner_session` cookie without ever completing the invitation/bootstrap
-flow, and the previous implementation rendered the dashboard for exactly
-that forged input (proven live; see "DNL1-63 adversarial verification"
-below). "Dashboard pages and layouts" are private application surface
-under DNL1-63's route classification and must require real server-side
-Partner authorization before any content is delivered — not merely a
-plausible cookie shape.
-
-Because SalesChain exposes no non-destructive, bearer-authenticated way to
-verify a session token (see "Known limitation" above — the only such call
-is the destructive `logout`), there is currently no way to implement that
-real authorization in this repository. Rendering the dashboard is
-therefore disabled until SalesChain provides one. `components/portal/
-PortalNav.tsx`, `components/portal/ReferralLinkCard.tsx`,
-`components/portal/LogoutButton.tsx`, and `lib/portal-sections.ts` remain
-in the codebase, already built and tested, ready to be wired back into
-`/portal` behind a real check the moment that endpoint exists — none of
-them are currently imported by any route.
+Because there is no way to invalidate a stale-but-locally-present cookie
+from a plain page render (Next.js only allows `cookies().set()` from a
+Server Action or Route Handler), an invalid cookie is not proactively
+cleared by visiting `/portal` — it has no security consequence, since the
+cookie is re-validated against SalesChain on every visit and can never
+grant access on its own; it is only cleared by logout or its own 8-hour
+expiry.
 
 ## Known limitation: no referral/QR data source
 
 SalesChain's bootstrap-redemption response is exactly
-`{ partnerSessionToken }` (see "Approved SalesChain contract" above) — no
-partner id, referral code, or profile data — and the only bearer-
-authenticated endpoint (`POST /v1/partner-sessions/logout`) returns only
-`{ status }`. There is therefore no existing, authenticated SalesChain
+`{ partnerSessionToken }`, and `GET /v1/partner-sessions/me` returns
+exactly `{ status: "AUTHENTICATED" }` (see "Approved SalesChain contract"
+above) — deliberately no partner id, referral code, or profile data from
+either. There is therefore still no existing, authenticated SalesChain
 endpoint this repository can call to obtain a Partner's referral URL, and
-no Affiliate-side configuration can substitute for it, since a referral URL
-is inherently per-Partner data only SalesChain can issue.
+no Affiliate-side configuration can substitute for it, since a referral
+URL is inherently per-Partner data only SalesChain can issue.
 `components/portal/ReferralLinkCard.tsx` therefore renders only an honest
 empty state and no QR code is generated (there is nothing to encode). A
-future bearer-authenticated SalesChain read endpoint — for example
-`GET /v1/partner-sessions/me` or an equivalent Partner-resource contract
-returning at least a referral URL/code — is required before this
-repository can implement a real referral link or QR code.
+future Partner-resource contract returning at least a referral URL/code —
+separate from, and in addition to, the session-validation contract above
+— is required before this repository can implement a real referral link
+or QR code.
 
 ## CSRF / same-origin protection
 
@@ -192,7 +200,7 @@ server-side Partner authorization before content delivery):
 | `/einladung`, `/partner/invitation/accept` | Public invitation-acceptance entry — minimum surface required to begin authentication | none needed — no Partner/dashboard data rendered; invitation token lives only in the URL fragment and a `useRef`, never reaches the server on the initial request |
 | `POST /api/partner-invitations/accept` | Public, minimum BFF endpoint required to submit invitation acceptance/bootstrap authentication | same-origin check (403 on failure); strict input validation; generic error responses; bootstrap/session tokens never returned to the browser |
 | `POST /api/partner-sessions/logout` | Public, idempotent control action — exposes no private content to any caller regardless of session validity | same-origin check (403 on failure); always returns the identical generic `{status:"LOGGED_OUT"}` |
-| `/portal` | Would-be protected dashboard | **BLOCKED**: unconditional `redirect("/einladung")` before any markup renders, for every request — see "Protected Partner dashboard: blocked" above |
+| `/portal` | Protected Partner dashboard | Real server-side authorization via SalesChain `GET /v1/partner-sessions/me` before any markup renders; `redirect("/einladung")` on any non-`AUTHENTICATED` outcome — see "Protected Partner dashboard" above |
 | `/robots.txt` | Framework asset, no confidential content | n/a |
 | any other/unknown path | Not a route in this app | Next.js's own 404 handling; nothing here renders unknown paths |
 
@@ -201,33 +209,55 @@ this repository at all — there is nothing in that category to classify or
 protect yet, and none should be added until it can be served behind real
 authorization.
 
-Adversarial verification performed against a production build
-(`next build && next start`), per DNL1-63's required acceptance tests:
+Adversarial verification, per DNL1-63's required acceptance tests, was
+performed in two passes:
+
+- **Header/indexing/CSRF hardening** (items 5–7, 9, 11–12, unchanged by
+  the session-validation work below): verified against a full production
+  build (`next build && next start`).
+- **Session-validation logic** (items 1–4, 13–15, added by wiring the real
+  `/me` check): verified against `next dev` with a local mock HTTP
+  upstream standing in for SalesChain (`SALESCHAIN_API_BASE_URL` pointed
+  at `http://localhost:<mock-port>` — `getSalesChainBaseUrl()` only
+  permits a non-`https` origin outside Production, so a true `next start`
+  run needs a locally-trusted TLS cert to test against a mock upstream;
+  the request-handling logic under test is identical in both modes and is
+  additionally covered by `__tests__/portal.test.tsx` and
+  `__tests__/saleschain-client.test.ts` at the unit level). No real
+  SalesChain credential or Production system was used for any of this.
 
 | # | Test | Result |
 | --- | --- | --- |
-| 1–2 | Anonymous `GET /portal`, no cookie | `307` to `/einladung`; body contains the site shell only, no dashboard strings (`Empfehlungslink`, `Bald verfügbar`, etc.) |
-| 3 | Direct `POST` to both BFF routes with no/foreign `Origin` | `403 {"status":"FORBIDDEN"}`, no upstream call made |
-| 4 | RSC/Flight-shaped `GET /portal` (`RSC: 1`, `_rsc` query, forged cookie) | No dashboard content in the flight payload; the embedded digest resolves to `NEXT_REDIRECT;replace;/einladung;307` |
-| 5–7 | Googlebot, `GPTBot`, `facebookexternalhit`, `ClaudeBot` User-Agents on `/portal` | Identical `307` redirect and headers as an anonymous request — no UA-based branching exists anywhere, so there is no bypass surface tied to User-Agent |
+| 1 | No cookie at all | `307` to `/einladung`; `checkPartnerSession` never called |
+| 2 | Malformed cookie (wrong shape/length) | `307` to `/einladung`; `checkPartnerSession` never called |
+| 3 | Well-formed but fabricated cookie, mock backend `401` | `307` to `/einladung` |
+| 3b | Well-formed cookie the mock backend confirms live (`200 {"status":"AUTHENTICATED"}`) | `200`, real dashboard renders (`Empfehlungslink` present) |
+| 4 (fail-closed) | Mock backend `200` with extra fields | `307` — extra-field response rejected, not trusted |
+| 4 (fail-closed) | Mock backend `500` | `307` |
+| 4 (fail-closed) | Mock backend never responds (timeout) | `307`, after the fixed 8s client timeout |
+| 4 (fail-closed) | Mock backend unreachable (connection refused) | `307` |
+| 4 | RSC/Flight-shaped `GET /portal` (`RSC: 1`, `_rsc` query) with a fabricated cookie | No dashboard content in the flight payload; digest resolves to `NEXT_REDIRECT;replace;/einladung;307` |
+| 4 | RSC/Flight-shaped `GET /portal` with a mock-confirmed valid cookie | Dashboard content (`Empfehlungslink`) present in the flight payload — the RSC path re-executes the same authorization, it is not bypassed |
+| 5–7 | Googlebot, `GPTBot`, `facebookexternalhit`, `ClaudeBot` User-Agents on `/portal` with a fabricated cookie | `307` for every UA — no UA-based branching exists anywhere |
 | 8 | Direct protected image/file/QR/download URL | N/A — no such route exists in this repository |
 | 9 | Sitemap/feed/structured data exposing private URLs | `/sitemap.xml` and `/feed.xml` both `404`; none are declared |
 | 10 | Public HTML on `/`, `/einladung` scanned for SalesChain/session/token strings | None found |
-| 11 | `Cache-Control` on private responses | `private, no-store` on `/portal`, `POST /api/partner-invitations/accept`, `POST /api/partner-sessions/logout` |
-| 12 | Indexing headers/metadata | `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` on every route (`next.config.ts`); `<meta name="robots">`/`<meta name="googlebot">` on every page (`app/layout.tsx`); `robots.txt` disallows `/` entirely |
-| 13 | Cookie tampering (well-formed but forged `partner_session`) | Still redirects — the route no longer reads the cookie at all, so no shape of cookie can pass |
-| 14 | Logout then re-request `/portal` (simulating browser-back/deep-link after logout) | Cookie cleared with `Set-Cookie: ...; Max-Age=0; Secure; HttpOnly`; subsequent `/portal` request still `307`s regardless |
-| 15 | Knowing/guessing the `/portal` URL | Insufficient — every request redirects unconditionally; there is no cookie value or header that reaches dashboard content |
+| 11 | `Cache-Control` on private responses | `private, no-store` on `/portal`, `POST /api/partner-invitations/accept`, `POST /api/partner-sessions/logout` (production build) |
+| 12 | Indexing headers/metadata | `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` on every route (`next.config.ts`); `<meta name="robots">`/`<meta name="googlebot">` on every page (`app/layout.tsx`); `robots.txt` disallows `/` entirely (production build) |
+| 12 | `POST /api/partner-invitations/accept` with no `Origin` header | `403 {"status":"FORBIDDEN"}`, no upstream call made |
+| 13 | Cookie tampering (well-formed but forged `partner_session`) | `307` — the backend call rejects it; cookie shape alone is never sufficient |
+| 14 | Real logout (same-origin, mock-confirmed valid cookie), then re-request `/portal` with no cookie | Cookie cleared with `Set-Cookie: ...; Max-Age=0; HttpOnly; SameSite=lax`; subsequent `/portal` request `307`s |
+| 15 | Knowing/guessing the `/portal` URL | Insufficient on its own — a real, currently-live SalesChain-confirmed session is required in every case above |
 
-One known, accepted gap: on a plain (non-RSC) browser navigation request,
+One known, accepted gap, carried over from the header-hardening pass and
+unaffected by this round: on a plain (non-RSC) browser navigation request,
 Next.js's own internal `Vary` header for the redirect response
 (`rsc, next-router-state-tree, next-router-prefetch, ...`) supersedes the
 custom `Vary: Cookie` rule in `next.config.ts` — confirmed present on
 RSC/Flight-shaped requests, but not on the initial full-page redirect.
 `Cache-Control: private, no-store` is present on both request shapes and
 already prevents shared/proxy caching regardless of `Vary`, so this does
-not reopen the boundary; it is noted here for completeness rather than
-left silently unverified.
+not reopen the boundary.
 
 ## Residual partial-failure limitation
 
@@ -250,9 +280,9 @@ cleanup without an upstream transactional or idempotent session contract.
 | --- | --- |
 | Partner application (`/partner-werden`) | Static preview UI only. Submit action is disabled. No API call. |
 | Invitation acceptance (`/einladung`; legacy alias `/partner/invitation/accept`) | Implemented. Reads the URL fragment, scrubs it, runs Turnstile, submits to the BFF. New invitation links use `/einladung#token=...`. |
-| Partner portal (`/portal`) | **Blocked (DNL1-63):** unconditionally redirects to `/einladung`; no dashboard renders for anyone. See "Protected Partner dashboard: blocked" above. |
+| Partner portal (`/portal`) | Implemented and protected: real server-side validation via SalesChain `GET /v1/partner-sessions/me`, redirects to `/einladung` on any non-`AUTHENTICATED` outcome. No real Partner/lead/commission data; referral link shows an honest empty state. See "Protected Partner dashboard" above. |
 | BFF routes | Implemented: `app/api/partner-invitations/accept`, `app/api/partner-sessions/logout`. Both reject cross-origin requests (see "CSRF / same-origin protection") and set `Cache-Control: private, no-store` / `X-Robots-Tag: noindex...`. |
-| SalesChain client | Implemented: `lib/saleschain/client.ts`, `lib/saleschain/config.ts`, `lib/saleschain/session-cookie.ts`. |
+| SalesChain client | Implemented: `lib/saleschain/client.ts` (including `checkPartnerSession`), `lib/saleschain/config.ts`, `lib/saleschain/session-cookie.ts`. |
 
 ## Environment variables
 

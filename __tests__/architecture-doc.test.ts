@@ -13,8 +13,11 @@ test("the architecture boundary document exists and states the key rules", () =>
   expect(doc).toMatch(/SalesChain tokens are server-only/i);
   expect(doc).toMatch(/URL fragments/i);
   expect(doc).toMatch(/No\s+database belongs in this repository/i);
-  expect(doc).toMatch(/Cookie presence is not.*proof of a live/i);
-  expect(doc).toMatch(/no `whoami` endpoint/i);
+  // Real, non-destructive session validation via GET /v1/partner-sessions/me
+  // (saleschain-os PR #45) — superseded the earlier "no whoami endpoint"
+  // limitation once that contract was reviewed and merged upstream.
+  expect(doc).toMatch(/GET \/v1\/partner-sessions\/me/);
+  expect(doc).toMatch(/checkPartnerSession/);
 });
 
 test(".env.example declares expected variable names with no values", () => {
