@@ -197,7 +197,7 @@ test("calls acceptance then bootstrap redemption, in that order, and sets the co
   expect(fetchMock.mock.calls[1][0]).toMatch(/\/v1\/public\/partner-sessions\/bootstrap$/);
 
   expect(response.status).toBe(200);
-  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("cache-control")).toBe("private, no-store");
 
   const body = await response.json();
   expect(body).toEqual({ status: "AUTHENTICATED" });
@@ -355,8 +355,11 @@ test("maps a misconfigured SALESCHAIN_API_BASE_URL to a generic 503, not a stack
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-test("every response sets Cache-Control: no-store", async () => {
+test("every response sets Cache-Control: private, no-store and X-Robots-Tag noindex", async () => {
   const request = makeRequest("{not json");
   const response = await POST(request);
-  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("x-robots-tag")).toBe(
+    "noindex, nofollow, noarchive, nosnippet, noimageindex"
+  );
 });

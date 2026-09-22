@@ -195,7 +195,10 @@ test("repeated logout with no cookie present is safe and never calls SalesChain"
   expect(await secondResponse.json()).toEqual({ status: "LOGGED_OUT" });
 });
 
-test("sets Cache-Control: no-store", async () => {
+test("sets Cache-Control: private, no-store and X-Robots-Tag noindex", async () => {
   const response = await POST(makeRequest());
-  expect(response.headers.get("cache-control")).toBe("no-store");
+  expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("x-robots-tag")).toBe(
+    "noindex, nofollow, noarchive, nosnippet, noimageindex"
+  );
 });

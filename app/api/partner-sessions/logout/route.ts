@@ -10,7 +10,8 @@ function jsonResponse(body: unknown, status: number): Response {
     status,
     headers: {
       "content-type": "application/json",
-      "cache-control": "no-store",
+      "cache-control": "private, no-store",
+      "x-robots-tag": "noindex, nofollow, noarchive, nosnippet, noimageindex",
     },
   });
 }

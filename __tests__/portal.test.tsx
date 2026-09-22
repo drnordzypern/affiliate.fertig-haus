@@ -1,137 +1,66 @@
 import { expect, test, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { cookies, cookieStore } = vi.hoisted(() => {
-  const backing = new Map<string, string>();
-  const store = {
-    get: (name: string) => (backing.has(name) ? { name, value: backing.get(name)! } : undefined),
-    __setForTest: (name: string, value: string) => backing.set(name, value),
-    __clearForTest: () => backing.clear(),
-  };
-  return { cookies: vi.fn(async () => store), cookieStore: store };
-});
-
-const { routerReplace, redirectMock } = vi.hoisted(() => ({
-  routerReplace: vi.fn(),
+const { redirectMock, cookiesMock } = vi.hoisted(() => ({
   redirectMock: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
   }),
+  cookiesMock: vi.fn(() => {
+    throw new Error("cookies() must not be called by app/portal/page.tsx");
+  }),
 }));
 
-vi.mock("next/headers", () => ({ cookies }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: routerReplace }),
   redirect: redirectMock,
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: cookiesMock,
 }));
 
 const { default: PortalPage } = await import("@/app/portal/page");
 
-const VALID_SESSION_TOKEN = "A".repeat(43);
+/**
+ * DNL1-63: cookie *presence/shape* is not valid server-side Partner
+ * authorization — SalesChain has no non-destructive way to verify a
+ * session token today (see docs/architecture.md). PortalPage must
+ * therefore redirect unconditionally, for every request shape, without
+ * ever reading or branching on the cookie. These tests are adversarial:
+ * they assert the redirect holds even for a cookie value an attacker
+ * could trivially forge (correct 43-char base64url shape, never issued by
+ * a real invitation/bootstrap flow).
+ */
 
-function setSessionCookie(value: string) {
-  cookieStore.__setForTest("partner_session", value);
-}
-
-function clearCookies() {
-  cookieStore.__clearForTest();
+test("redirects to /einladung with no cookie at all", () => {
   redirectMock.mockClear();
-}
-
-test("redirects to /einladung and renders no dashboard content when no session cookie is present", async () => {
-  clearCookies();
-
-  await expect(PortalPage()).rejects.toThrow("REDIRECT:/einladung");
+  expect(() => PortalPage()).toThrow("REDIRECT:/einladung");
   expect(redirectMock).toHaveBeenCalledWith("/einladung");
 });
 
-test("redirects to /einladung when the session cookie is present but malformed", async () => {
-  clearCookies();
-  setSessionCookie("not-a-valid-token");
+test("redirects to /einladung even for a well-formed, forged session cookie", () => {
+  // Simulates an attacker who never completed the invitation/bootstrap
+  // flow, sending an arbitrary but correctly-shaped cookie value directly.
+  redirectMock.mockClear();
+  document.cookie = "partner_session=" + "A".repeat(43) + "; path=/";
 
-  await expect(PortalPage()).rejects.toThrow("REDIRECT:/einladung");
+  expect(() => PortalPage()).toThrow("REDIRECT:/einladung");
+  expect(redirectMock).toHaveBeenCalledWith("/einladung");
+
+  document.cookie = "partner_session=; path=/; max-age=0";
 });
 
-test("renders the protected dashboard when a well-formed session cookie is present", async () => {
-  clearCookies();
-  setSessionCookie(VALID_SESSION_TOKEN);
+test("redirects to /einladung for a malformed cookie value", () => {
+  redirectMock.mockClear();
+  document.cookie = "partner_session=not-a-valid-token; path=/";
 
-  const element = await PortalPage();
-  render(element);
+  expect(() => PortalPage()).toThrow("REDIRECT:/einladung");
 
-  expect(screen.getByRole("heading", { level: 1, name: "Partnerportal" })).toBeDefined();
-  expect(redirectMock).not.toHaveBeenCalled();
+  document.cookie = "partner_session=; path=/; max-age=0";
 });
 
-test("renders a real, visible logout control that makes no network call on render", async () => {
-  clearCookies();
-  setSessionCookie(VALID_SESSION_TOKEN);
-  const fetchSpy = vi.spyOn(globalThis, "fetch");
+test("never touches next/headers cookies() — the redirect does not depend on reading any cookie", () => {
+  redirectMock.mockClear();
+  cookiesMock.mockClear();
 
-  render(await PortalPage());
-
-  expect(screen.getByRole("button", { name: /abmelden/i })).toBeDefined();
-  expect(fetchSpy).not.toHaveBeenCalled();
-
-  fetchSpy.mockRestore();
-});
-
-test("logout sends no bearer token or request body from the browser", async () => {
-  clearCookies();
-  setSessionCookie(VALID_SESSION_TOKEN);
-  const fetchMock = vi
-    .spyOn(globalThis, "fetch")
-    .mockResolvedValue(new Response(JSON.stringify({ status: "LOGGED_OUT" }), { status: 200 }));
-
-  render(await PortalPage());
-  fireEvent.click(screen.getByRole("button", { name: /abmelden/i }));
-
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-  const [url, init] = fetchMock.mock.calls[0];
-  expect(url).toBe("/api/partner-sessions/logout");
-  expect(init).toEqual({ method: "POST" });
-  expect(JSON.stringify(init)).not.toMatch(/authorization|bearer|token/i);
-  await waitFor(() => expect(routerReplace).toHaveBeenCalledWith("/"));
-
-  fetchMock.mockRestore();
-});
-
-test("shows only the honest empty state for the referral link — no fake link, no QR", async () => {
-  clearCookies();
-  setSessionCookie(VALID_SESSION_TOKEN);
-
-  const { container } = render(await PortalPage());
-
-  expect(
-    screen.getByText(
-      "Ihr persönlicher Empfehlungslink wird nach der Zuordnung zum Partnerprogramm hier bereitgestellt."
-    )
-  ).toBeDefined();
-  expect(screen.queryByRole("textbox")).toBeNull();
-  expect(container.querySelector("svg")).toBeNull();
-  expect(screen.queryByText(/^https?:\/\//)).toBeNull();
-});
-
-test("shows no fake commission, lead, or revenue data anywhere on the page", async () => {
-  clearCookies();
-  setSessionCookie(VALID_SESSION_TOKEN);
-
-  const { container } = render(await PortalPage());
-
-  expect(container.textContent).not.toMatch(/[€$£¥]/);
-  expect(container.textContent).not.toMatch(/\d/);
-});
-
-test("navigation labels unavailable modules clearly, without linking to a non-existent section", async () => {
-  clearCookies();
-  setSessionCookie(VALID_SESSION_TOKEN);
-
-  render(await PortalPage());
-
-  const nav = screen.getByRole("navigation", { name: "Portalbereiche" });
-  const badges = screen.getAllByText("Bald verfügbar");
-  expect(badges.length).toBeGreaterThan(0);
-  for (const badge of badges) {
-    expect(badge.closest("a")).toBeNull();
-  }
-  expect(nav.querySelector('a[href="#empfehlungslink"]')).not.toBeNull();
+  expect(() => PortalPage()).toThrow("REDIRECT:/einladung");
+  expect(cookiesMock).not.toHaveBeenCalled();
 });

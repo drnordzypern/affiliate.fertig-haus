@@ -14,9 +14,12 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
     nocache: true,
+    noarchive: true,
+    nosnippet: true,
     googleBot: {
       index: false,
       follow: false,
+      noimageindex: true,
     },
   },
 };
