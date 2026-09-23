@@ -15,10 +15,13 @@ import {
   INVALID_REQUEST_MESSAGE,
   RATE_LIMITED_MESSAGE,
   UNAVAILABLE_MESSAGE,
-  renderAccessGrantedHtml,
   renderAccessPageHtml,
 } from "@/lib/site-access/page";
-import { htmlGateResponse, jsonDenyResponse } from "@/lib/site-access/response";
+import {
+  htmlGateResponse,
+  jsonDenyResponse,
+  redirectAfterUnlockResponse,
+} from "@/lib/site-access/response";
 
 /**
  * Temporary, site-wide pre-launch access boundary.
@@ -84,7 +87,12 @@ export default async function proxy(request: NextRequest): Promise<Response> {
 
   recordSuccess(rateLimitKey);
 
-  const response = htmlGateResponse(renderAccessGrantedHtml(), 200);
+  // 303, and the exact original pathname + query — never a fragment,
+  // which is never sent to the server — so the follow-up request is a
+  // plain GET to the same place the user was trying to reach. See
+  // redirectAfterUnlockResponse's own doc comment for why this must not
+  // be 307/308.
+  const response = redirectAfterUnlockResponse(request.nextUrl);
   response.cookies.set({
     name: SITE_ACCESS_COOKIE_NAME,
     value: createSiteAccessCookieValue(siteAccessConfig.secret),

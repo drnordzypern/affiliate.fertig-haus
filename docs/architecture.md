@@ -286,15 +286,45 @@ rendered:
    page-shaped requests, or a generic JSON `401` for anything under
    `/api/`. Neither path ever touches, imports, or renders any part of
    the real application.
+4. On a correct password submission, it responds with an HTTP
+   `303 See Other` back to the exact pathname + query that was originally
+   requested (`lib/site-access/response.ts#redirectAfterUnlockResponse`),
+   with the new `af_access` cookie attached to that same response.
 
-Because this is a direct in-proxy response rather than a redirect, the
-browser's address bar never changes: whatever URL was requested — a
-protected page, an unknown path, or `/einladung#token=...` — is the URL
-the gate is served at and the URL that gets reloaded on success. This is
-also why invitation fragments are safe by construction: a fragment is
-never sent to any server by the browser regardless of this boundary, and
-because there is no redirect, the browser's own already-displayed
-fragment is never touched, dropped, or exposed to it either.
+Because the gate is a direct in-proxy response rather than a redirect,
+the browser's address bar never changes while the password form is
+shown: whatever URL was requested — a protected page, an unknown path, or
+`/einladung#token=...` — is the URL the gate is served at. This is also
+why invitation fragments are safe by construction: a fragment is never
+sent to any server by the browser regardless of this boundary.
+
+**Why the success response is a redirect, and specifically `303`.** An
+earlier revision responded to a correct password with `200` plus a tiny
+`<script>location.reload()</script>`, reasoning that reloading the
+browser's own current address-bar URL would trivially preserve it,
+fragment included. This was a real, shipped Production defect:
+`location.reload()` on a document that was reached via a POST replays
+that same POST — method and body — rather than issuing a GET. Reloading
+after unlocking `/portal` therefore re-POSTed to `/portal`, which (now
+past the access boundary with a valid cookie) reached the real
+`app/portal/page.tsx`, whose own Partner-session check redirects to
+`/einladung` with Next's standard method-preserving `307` — so the
+browser then POSTed to `/einladung` too, a page route with no `POST`
+handler, producing a `405`. The fix replaces the reload with an explicit
+`303`: per RFC 9110 §15.4.4, a `303` response's follow-up request MUST
+use `GET` regardless of the original method, which is exactly the
+correction needed here (`307`/`308` were considered and rejected for the
+opposite reason — both are defined to preserve the original method, which
+is what caused the defect in the first place). The redirect target is
+always `request.nextUrl` — the exact original pathname and query, with no
+fragment, since none is ever known to the server — and the browser's own
+redirect handling re-attaches whatever fragment is still in its address
+bar once the follow-up `GET` completes, per the Fetch standard's
+redirect-fragment-inheritance behavior (an empty/absent fragment on the
+`Location` header inherits the fragment of the request that produced the
+redirect). `/portal`'s own downstream `307` to `/einladung` is unaffected
+by any of this — it was already correct, since it only ever runs after
+this fix's `303 → GET` has already occurred.
 
 ### Route classification
 
@@ -440,6 +470,9 @@ test files:
 | Missing configuration | ✅ `503` (page) / `401` (API); correct password still cannot succeed |
 | "Zugang sperren" | ✅ clears the cookie; the same cookie value is rejected immediately after |
 | Site-access cookie alone vs. `/portal` | ✅ verified live: a valid site-access cookie with no real Partner session still gets `307` to `/einladung` — the two boundaries are fully independent |
+| Successful unlock response shape | ✅ `303`, never `307`/`308`, `Location` matching the exact original pathname/query, empty body |
+| Unlock from `/portal` produces no `405` | ✅ verified live end-to-end with `curl -L`: `POST /portal` → `303 /portal` → `GET /portal` → `307 /einladung` → `GET /einladung` → `200`, "Einladung annehmen" — no POST ever reaches `/portal` or `/einladung` after the unlock |
+| Unlock from `/` and `/einladung` | ✅ verified live: each redirects to itself and renders the real page on the follow-up `GET` |
 | Existing DNL1-63/Partner-session behavior | ✅ unchanged — full existing suite (`__tests__/portal.test.tsx`, `saleschain-client.test.ts`, `same-origin.test.ts`, etc.) still passes unmodified |
 | Private responses | ✅ `Cache-Control: private, no-store`, `Vary: Cookie`, `X-Robots-Tag`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP on every gate/deny response |
 | `robots.txt` / sitemap / feed | ✅ `robots.txt` unaffected; no sitemap/feed route exists (both resolve through the gate) |
