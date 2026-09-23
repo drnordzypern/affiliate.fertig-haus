@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Section, SectionHeading } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { StatusRegion } from "@/components/ui/StatusRegion";
-import { PreviewBadge } from "@/components/ui/Badge";
+import { InactiveBadge } from "@/components/ui/Badge";
 import {
   TextField,
   TextAreaField,
@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: "Partner werden",
   description:
-    "Vorschau der geplanten Bewerbungsstrecke für das Fertig Haus Partnerprogramm. Diese Seite nimmt keine echten Bewerbungen entgegen.",
+    "Die Bewerbungsstrecke für das Fertig Haus Partnerprogramm ist derzeit nicht aktiv. Diese Seite nimmt keine echten Bewerbungen entgegen.",
 };
 
 const partnerTypes = [
@@ -33,17 +33,17 @@ export default function PartnerWerdenPage() {
   return (
     <Section className="pt-16 pb-24 sm:pt-20">
       <div className="flex flex-col gap-3">
-        <PreviewBadge />
+        <InactiveBadge />
         <SectionHeading
           level="h1"
           eyebrow="Partner werden"
-          title="Vorschau der Bewerbungsstrecke"
+          title="Bewerbungsstrecke derzeit nicht aktiv"
           description="Diese Ansicht zeigt die geplante Struktur der künftigen Partnerbewerbung. Sie dient ausschließlich der Darstellung und nimmt keine Eingaben entgegen."
         />
       </div>
 
       <StatusRegion tone="warning" className="mt-8 max-w-2xl">
-        Dieses Formular ist eine <strong>nicht-funktionale Vorschau</strong>.
+        Dieses Formular ist <strong>derzeit nicht aktiv</strong>.
         Es sendet keine Daten, speichert nichts lokal und die
         Absende-Schaltfläche ist bewusst deaktiviert. Bitte tragen Sie hier
         keine echten persönlichen Daten ein.
@@ -126,7 +126,7 @@ export default function PartnerWerdenPage() {
                   Ich habe die Hinweise zur Datenverarbeitung zur Kenntnis
                   genommen.{" "}
                   <em className="not-italic text-charcoal-500">
-                    Platzhaltertext – der endgültige, rechtlich geprüfte
+                    Vorläufiger Text – der endgültige, rechtlich geprüfte
                     Einwilligungstext wird vor Aktivierung dieser Funktion
                     ergänzt.
                   </em>
@@ -145,7 +145,7 @@ export default function PartnerWerdenPage() {
               Bewerbung absenden
             </button>
             <p id="form-preview-notice" className="text-xs text-charcoal-500">
-              Die Absende-Funktion ist in dieser Vorschau deaktiviert, da die
+              Die Absende-Funktion ist derzeit deaktiviert, da die
               Anbindung an die Bewerbungsprüfung noch nicht konfiguriert ist.
             </p>
           </div>

@@ -59,7 +59,7 @@ const benefits = [
       "Empfehlungen und Partneraktivitäten werden sicherheits- und datenschutzbewusst verarbeitet.",
   },
   {
-    title: "Akademie & Events (in Vorbereitung)",
+    title: "Akademie & Events",
     description:
       "Zukünftiger Zugang zu Schulungen und Veranstaltungen rund um das Partnerprogramm.",
   },
@@ -137,8 +137,9 @@ export default function Home() {
               </Button>
             </div>
             <p className="text-xs text-charcoal-500">
-              Hinweis: Diese Seite ist eine Vorschau. Bewerbung, Login,
-              Referral-Funktion und Auszahlungen sind noch nicht aktiv.
+              Hinweis: Die Bewerbungsstrecke ist derzeit nicht aktiv. Der
+              Zugang zum Partnerportal erfolgt ausschließlich über eine
+              persönliche Einladung.
             </p>
           </div>
 
@@ -278,13 +279,12 @@ export default function Home() {
             Interesse am Fertig Haus Partnerprogramm?
           </h2>
           <p className="max-w-xl text-base leading-relaxed text-charcoal-500">
-            Sehen Sie sich die geplante Bewerbungsstrecke an. Eine
-            verbindliche Aufnahme, garantierte Provisionen oder eine sofortige
-            Kontoerstellung sind damit nicht verbunden – dies ist eine
-            Vorschau.
+            Die Bewerbungsstrecke ist derzeit nicht aktiv. Eine verbindliche
+            Aufnahme, garantierte Provisionen oder eine sofortige
+            Kontoerstellung sind damit nicht verbunden.
           </p>
           <Button href="/partner-werden" variant="primary">
-            Bewerbungsvorschau ansehen
+            Bewerbungsstrecke ansehen
           </Button>
         </div>
       </Section>

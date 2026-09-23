@@ -26,11 +26,11 @@ export function Badge({
   );
 }
 
-/** Prominent label marking preview-only UI that is not yet operational. */
-export function PreviewBadge({ className = "" }: { className?: string }) {
+/** Prominent label marking UI that is not yet operational. */
+export function InactiveBadge({ className = "" }: { className?: string }) {
   return (
     <Badge tone="terracotta" className={className}>
-      Vorschau
+      Nicht aktiv
     </Badge>
   );
 }

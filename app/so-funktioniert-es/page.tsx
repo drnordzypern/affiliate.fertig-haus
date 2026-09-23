@@ -64,12 +64,12 @@ export default function SoFunktioniertEsPage() {
           level="h1"
           eyebrow="So funktioniert es"
           title="Der geplante Ablauf des Partnerprogramms"
-          description="Die folgenden Schritte beschreiben den vorgesehenen Lebenszyklus einer Partnerschaft und einer Empfehlung. Sie beschreiben die künftige Funktionsweise – aktuell befindet sich diese Seite in der Vorschau."
+          description="Die folgenden Schritte beschreiben den vorgesehenen Lebenszyklus einer Partnerschaft und einer Empfehlung. Sie beschreiben die künftige Funktionsweise, die noch nicht vollständig umgesetzt ist."
         />
         <StatusRegion tone="warning" className="mt-8 max-w-2xl">
           Alle unten aufgeführten Schritte sind derzeit{" "}
-          <strong>nicht funktionsfähig</strong>. Es handelt sich um eine
-          inhaltliche Vorschau der künftigen Abläufe.
+          <strong>nicht funktionsfähig</strong>. Diese Seite beschreibt die
+          künftigen Abläufe inhaltlich.
         </StatusRegion>
       </Section>
 
@@ -102,19 +102,17 @@ export default function SoFunktioniertEsPage() {
       <Section>
         <div className="flex flex-col items-start gap-6">
           <h2 className="font-serif text-2xl text-charcoal-900">
-            Bereits als Vorschau verfügbar
+            Bereits einsehbar
           </h2>
           <p className="max-w-2xl text-sm leading-relaxed text-charcoal-500">
             Sie können sich schon jetzt die geplante Struktur der Bewerbung
-            sowie des Partnerportals ansehen. Beide Bereiche sind als
-            nicht-funktionale Vorschau gekennzeichnet.
+            ansehen; die Absende-Funktion ist derzeit nicht aktiv. Der Zugang
+            zum Partnerportal erfolgt ausschließlich über eine persönliche
+            Einladung.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button href="/partner-werden" variant="primary">
-              Bewerbungsvorschau ansehen
-            </Button>
-            <Button href="/portal" variant="secondary">
-              Partnerportal-Vorschau ansehen
+              Bewerbungsstrecke ansehen
             </Button>
           </div>
         </div>

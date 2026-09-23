@@ -5,11 +5,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Fertig Haus Partner Portal (Vorschau)",
-    template: "%s · Fertig Haus Partner Portal (Vorschau)",
+    default: "Fertig Haus Partner Portal",
+    template: "%s · Fertig Haus Partner Portal",
   },
   description:
-    "Vorschau des künftigen Partnerportals von Fertig Haus für Empfehlungspartnerinnen und -partner. Noch nicht produktiv im Einsatz.",
+    "Partnerportal von Fertig Haus für Empfehlungspartnerinnen und -partner. Der Zugang erfolgt ausschließlich über eine persönliche Einladung.",
   robots: {
     index: false,
     follow: false,
