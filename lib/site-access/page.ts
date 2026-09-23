@@ -111,23 +111,3 @@ export const UNAVAILABLE_MESSAGE: AccessPageMessage = {
   text: "Der Zugang ist derzeit nicht verfügbar.",
   tone: "info",
 };
-
-/**
- * Returned only after a correct password. Reloads the browser's current
- * address-bar URL unchanged (never a URL this module constructs) so an
- * invitation link's fragment — never seen by the server — is preserved
- * and can be read client-side exactly as it would on a first visit.
- */
-export function renderAccessGrantedHtml(): string {
-  return `<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<title>Zugang bestätigt</title>
-</head>
-<body>
-<script>location.reload();</script>
-<noscript>Zugang bestätigt. Bitte laden Sie die Seite manuell neu.</noscript>
-</body>
-</html>`;
-}

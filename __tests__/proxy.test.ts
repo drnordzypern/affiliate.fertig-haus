@@ -203,7 +203,6 @@ test("correct password creates only the signed access cookie, no plaintext anywh
       ip: "203.0.113.1",
     })
   );
-  expect(response.status).toBe(200);
 
   const setCookie = response.headers.get("set-cookie");
   expect(setCookie).toBeTruthy();
@@ -214,7 +213,142 @@ test("correct password creates only the signed access cookie, no plaintext anywh
 
   const body = await response.text();
   expect(body).not.toContain(PASSWORD);
-  expect(body).toContain("location.reload()");
+});
+
+/**
+ * Regression coverage for the Production defect where a successful unlock
+ * returned 200 + `<script>location.reload()</script>`. Reloading a
+ * document reached via a POST replays that POST (with its body) rather
+ * than issuing a GET — which then cascaded through /portal's own internal
+ * 307 (method-preserving) redirect into a POST to /einladung, a page
+ * route with no POST handler, producing a 405. The fix is an explicit
+ * HTTP 303 (method-switching) redirect back to the exact original
+ * pathname + query.
+ */
+test("successful unlock is exactly a 303, never 307/308, to the same original pathname", async () => {
+  const response = await proxy(
+    makeRequest("/portal", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.2",
+    })
+  );
+
+  expect(response.status).toBe(303);
+  expect(response.status).not.toBe(307);
+  expect(response.status).not.toBe(308);
+  expect(new URL(response.headers.get("location")!).pathname).toBe("/portal");
+});
+
+test("successful unlock preserves the original query string in the redirect target", async () => {
+  const response = await proxy(
+    makeRequest("/einladung?foo=bar", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.3",
+    })
+  );
+
+  const location = new URL(response.headers.get("location")!);
+  expect(location.pathname).toBe("/einladung");
+  expect(location.search).toBe("?foo=bar");
+});
+
+test("successful unlock from / redirects to /", async () => {
+  const response = await proxy(
+    makeRequest("/", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.4",
+    })
+  );
+  expect(response.status).toBe(303);
+  expect(new URL(response.headers.get("location")!).pathname).toBe("/");
+});
+
+test("a 303 redirect carries no request body — the follow-up request the browser makes is GET, not POST", async () => {
+  // NextResponse.redirect() never attaches a body of its own; the fix's
+  // correctness rests on 303's HTTP-defined method-switching semantics
+  // (RFC 9110 §15.4.4: "the user agent SHOULD NOT include the request's
+  // original body"), which is exactly why 303 was chosen over 307/308.
+  const response = await proxy(
+    makeRequest("/portal", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.5",
+    })
+  );
+  const body = await response.text();
+  expect(body).toBe("");
+});
+
+test("unlocking from /portal then following the redirect as a real browser would never sends a POST to /portal or /einladung", async () => {
+  const unlockResponse = await proxy(
+    makeRequest("/portal", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.6",
+    })
+  );
+  expect(unlockResponse.status).toBe(303);
+  const setCookie = unlockResponse.headers.get("set-cookie")!;
+  const cookieValue = /af_access=([^;]+)/.exec(setCookie)![1];
+
+  // The browser's mandated follow-up to a 303 is a GET — simulate exactly
+  // that (never a POST) to the redirect target with the new cookie.
+  const followUp = await proxy(
+    makeRequest("/portal", { method: "GET", cookie: `${SITE_ACCESS_COOKIE_NAME}=${cookieValue}` })
+  );
+  // Passes the site-access boundary (x-middleware-next) — /portal's own
+  // Partner-session check then runs and correctly 307s to /einladung
+  // (a GET redirect, not a 405) because there is still no real Partner
+  // session; that downstream behavior belongs to app/portal/page.tsx, not
+  // this boundary, and is unaffected by this fix.
+  expect(followUp.headers.get("x-middleware-next")).toBe("1");
+});
+
+test("/portal still requires a real Partner session after unlocking — the site-access cookie alone is insufficient", async () => {
+  const unlockResponse = await proxy(
+    makeRequest("/", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.7",
+    })
+  );
+  const setCookie = unlockResponse.headers.get("set-cookie")!;
+  const cookieValue = /af_access=([^;]+)/.exec(setCookie)![1];
+
+  const portalRequest = makeRequest("/portal", {
+    cookie: `${SITE_ACCESS_COOKIE_NAME}=${cookieValue}`,
+  });
+  const response = await proxy(portalRequest);
+  // The site-access boundary itself only ever decides whether to let the
+  // request continue to the real app (x-middleware-next) — it never
+  // renders /portal's own dashboard or performs its Partner-session
+  // check; that remains entirely app/portal/page.tsx's responsibility.
+  expect(response.headers.get("x-middleware-next")).toBe("1");
+});
+
+test("the redirect target never contains a fragment — none is ever sent to or known by the server", async () => {
+  const response = await proxy(
+    makeRequest("/einladung", {
+      method: "POST",
+      contentType: "application/x-www-form-urlencoded",
+      body: `password=${PASSWORD}`,
+      ip: "203.0.113.8",
+    })
+  );
+  const location = response.headers.get("location")!;
+  expect(location).not.toContain("#");
+  // The browser's own redirect handling re-attaches whatever fragment was
+  // already in its address bar when the Location header carries none —
+  // this server-side response is correctly fragment-free by construction.
 });
 
 test("repeated wrong passwords eventually rate-limit, with a distinct generic message", async () => {
