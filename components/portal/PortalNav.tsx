@@ -11,7 +11,7 @@ export function PortalNav() {
   return (
     <nav
       aria-label="Portalbereiche"
-      className="sm:sticky sm:top-24 sm:w-56 sm:shrink-0"
+      className="sm:sticky sm:top-28 sm:w-56 sm:shrink-0"
     >
       <ul className="flex flex-col gap-1 border-l border-stone-200 pl-4">
         {portalSections.map((section) =>
@@ -19,7 +19,7 @@ export function PortalNav() {
             <li key={section.id}>
               <a
                 href={`#${section.id}`}
-                className="block rounded-sm px-2 py-1.5 text-sm text-charcoal-700 hover:text-olive-700"
+                className="block rounded-lg px-2 py-1.5 text-sm text-charcoal-700 hover:text-olive-700"
               >
                 {section.label}
               </a>
@@ -28,7 +28,7 @@ export function PortalNav() {
             <li key={section.id}>
               <span
                 aria-disabled="true"
-                className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-charcoal-500"
+                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-charcoal-500"
               >
                 {section.label}
                 <Badge tone="neutral" className="px-2 py-0.5 text-[0.65rem]">

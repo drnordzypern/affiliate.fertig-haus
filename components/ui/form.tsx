@@ -6,7 +6,7 @@ import type {
 } from "react";
 
 const controlClasses =
-  "w-full rounded-sm border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-sm text-charcoal-900 placeholder:text-charcoal-500/60 focus:border-olive-600 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-charcoal-500";
+  "w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-charcoal-900 placeholder:text-charcoal-500/60 focus:border-olive-600 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-charcoal-500";
 
 function FieldShell({
   id,
@@ -146,7 +146,7 @@ export function CheckboxField({
         <input
           id={id}
           type="checkbox"
-          className="mt-1 h-4 w-4 shrink-0 rounded-sm border-stone-300 text-olive-700 focus-visible:outline-2 focus-visible:outline-olive-700"
+          className="mt-1 h-4 w-4 shrink-0 rounded-lg border-stone-300 text-olive-700 focus-visible:outline-2 focus-visible:outline-olive-700"
           aria-describedby={hint ? `${id}-hint` : undefined}
           {...rest}
         />

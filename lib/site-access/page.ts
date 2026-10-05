@@ -22,8 +22,8 @@ const BASE_STYLES = `
   * { box-sizing: border-box; }
   body {
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: #faf8f4;
-    color: #211f1a;
+    background: #f8f6f2;
+    color: #1b1b18;
     display: flex;
     min-height: 100vh;
     align-items: center;
@@ -32,27 +32,28 @@ const BASE_STYLES = `
     padding: 24px;
   }
   main { max-width: 360px; width: 100%; }
-  h1 { font-size: 1.15rem; font-weight: 600; margin: 0 0 1rem; }
+  h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; color: #1a3a5b; margin: 0 0 1rem; }
   form { display: flex; flex-direction: column; gap: 0.75rem; }
   label { font-size: 0.875rem; }
   input[type="password"] {
     padding: 0.625rem 0.75rem;
-    border: 1px solid #c9c2b6;
-    border-radius: 4px;
+    border: 1px solid #d4d1c5;
+    border-radius: 8px;
     font-size: 1rem;
     width: 100%;
   }
   button {
     padding: 0.625rem 1rem;
     border: none;
-    border-radius: 4px;
-    background: #3f5b41;
-    color: #faf8f4;
+    border-radius: 8px;
+    background: #1a3a5b;
+    color: #fff;
     font-size: 0.9375rem;
+    font-weight: 600;
     cursor: pointer;
   }
   .message { font-size: 0.875rem; margin: 0; }
-  .message.error { color: #8a3324; }
+  .message.error { color: #a8400f; }
 `;
 
 export type AccessPageMessage = { text: string; tone: "error" | "info" };

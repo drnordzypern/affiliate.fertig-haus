@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
-type Tone = "olive" | "neutral" | "terracotta";
+type Tone = "olive" | "neutral" | "terracotta" | "onDark";
 
 const toneClasses: Record<Tone, string> = {
   olive: "bg-olive-100 text-olive-900 border-olive-500/40",
+  onDark: "bg-white/10 text-white border-white/30",
   neutral: "bg-stone-100 text-charcoal-700 border-stone-300",
   terracotta: "bg-terracotta-100 text-terracotta-600 border-terracotta-600/30",
 };

@@ -1,19 +1,22 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "cta" | "secondary" | "ghost" | "onDark";
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-olive-700 text-stone-50 hover:bg-olive-900 border border-olive-700",
+    "bg-olive-700 text-white hover:bg-olive-900 border border-olive-700",
+  cta: "bg-cta text-white hover:bg-cta-hover border border-cta hover:border-cta-hover",
+  onDark:
+    "bg-transparent text-white border border-white/60 hover:bg-white hover:text-olive-700",
   secondary:
-    "bg-transparent text-charcoal-900 border border-charcoal-900 hover:bg-charcoal-900 hover:text-stone-50",
+    "bg-transparent text-olive-700 border border-olive-700 hover:bg-olive-700 hover:text-white",
   ghost:
     "bg-transparent text-olive-700 border border-transparent hover:border-olive-500 hover:bg-olive-50",
 };
 
 const baseClasses =
-  "inline-flex items-center justify-center gap-2 rounded-sm px-6 py-3 text-sm font-medium tracking-wide transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
+  "inline-flex items-center justify-center gap-2 rounded-md px-6 py-3 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
 
 type ButtonProps = {
   variant?: Variant;

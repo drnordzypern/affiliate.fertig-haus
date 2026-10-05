@@ -80,7 +80,7 @@ export default function SoFunktioniertEsPage() {
             <li key={item.title}>
               <Card className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6">
                 <div className="flex items-center gap-4 sm:w-40 sm:shrink-0">
-                  <span className="font-serif text-2xl text-olive-600">
+                  <span className="font-semibold text-2xl text-olive-600">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <Badge tone="neutral">Geplant</Badge>
@@ -101,7 +101,7 @@ export default function SoFunktioniertEsPage() {
 
       <Section>
         <div className="flex flex-col items-start gap-6">
-          <h2 className="font-serif text-2xl text-charcoal-900">
+          <h2 className="font-semibold text-2xl text-charcoal-900">
             Bereits einsehbar
           </h2>
           <p className="max-w-2xl text-sm leading-relaxed text-charcoal-500">

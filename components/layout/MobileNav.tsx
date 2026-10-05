@@ -8,13 +8,13 @@ export function MobileNav({ links }: { links: NavLink[] }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="sm:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-expanded={open}
         aria-controls="mobile-nav-panel"
         onClick={() => setOpen((value) => !value)}
-        className="flex h-10 w-10 items-center justify-center rounded-sm border border-stone-300 text-charcoal-900"
+        className="flex h-10 w-10 items-center justify-center rounded-lg border border-stone-300 text-charcoal-900"
       >
         <span className="sr-only">
           {open ? "Menü schließen" : "Menü öffnen"}
@@ -43,7 +43,7 @@ export function MobileNav({ links }: { links: NavLink[] }) {
         <nav
           id="mobile-nav-panel"
           aria-label="Hauptnavigation (mobil)"
-          className="absolute inset-x-0 top-full border-t border-stone-200 bg-stone-50 px-6 py-4 shadow-sm"
+          className="absolute inset-x-0 top-full border-b border-t border-stone-200 bg-white px-4 py-4 shadow-md md:px-6"
         >
           <ul className="flex flex-col gap-1">
             {links.map((link) => (
@@ -51,7 +51,7 @@ export function MobileNav({ links }: { links: NavLink[] }) {
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="block rounded-sm px-3 py-3 text-base text-charcoal-900 hover:bg-olive-50"
+                  className="block rounded-lg px-3 py-3 text-base text-charcoal-900 hover:bg-olive-50"
                 >
                   {link.label}
                 </Link>
