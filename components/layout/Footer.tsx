@@ -10,19 +10,21 @@ export function Footer() {
   );
 
   return (
-    <footer className="border-t border-stone-200 bg-stone-100/60">
-      <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-14 sm:flex-row sm:justify-between">
+    <footer className="bg-olive-700 text-white">
+      <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-10 px-4 pt-16 pb-12 md:grid-cols-2 md:px-6 lg:grid-cols-[2fr_1fr_1fr] lg:gap-12">
         <div className="max-w-sm">
-          <Wordmark />
-          <p className="mt-4 text-sm leading-relaxed text-charcoal-500">
+          <div className="inline-block rounded-lg bg-white px-4 py-3">
+            <Wordmark size="footer" />
+          </div>
+          <p className="mt-6 text-sm leading-relaxed text-white/70">
             Der Partnerbereich von{" "}
-            <span className="text-charcoal-700">fertig-haus.net</span> für
+            <span className="text-white">fertig-haus.net</span> für
             Empfehlungspartnerinnen und -partner.
           </p>
         </div>
 
-        <nav aria-label="Fußzeilennavigation" className="flex flex-col gap-3">
-          <p className="text-xs font-medium tracking-wide text-charcoal-500 uppercase">
+        <nav aria-label="Fußzeilennavigation" className="flex flex-col gap-5">
+          <p className="text-lg font-semibold text-white">
             Navigation
           </p>
           <ul className="flex flex-col gap-2">
@@ -30,7 +32,7 @@ export function Footer() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="text-sm text-charcoal-700 hover:text-olive-700"
+                  className="text-sm text-white/70 transition-colors hover:text-white"
                 >
                   {link.label}
                 </Link>
@@ -40,8 +42,8 @@ export function Footer() {
         </nav>
 
         {availableLegalEntries.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <p className="text-xs font-medium tracking-wide text-charcoal-500 uppercase">
+          <div className="flex flex-col gap-5">
+            <p className="text-lg font-semibold text-white">
               Rechtliches
             </p>
             <ul className="flex flex-col gap-2">
@@ -49,7 +51,7 @@ export function Footer() {
                 <li key={entry.label}>
                   <Link
                     href={entry.href as string}
-                    className="text-sm text-charcoal-700 hover:text-olive-700"
+                    className="text-sm text-white/70 transition-colors hover:text-white"
                   >
                     {entry.label}
                   </Link>
@@ -60,9 +62,9 @@ export function Footer() {
         )}
       </div>
 
-      <div className="border-t border-stone-200 px-6 py-6">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-charcoal-500">
+      <div className="mx-auto max-w-[1240px] px-4 md:px-6">
+        <div className="flex border-t border-white/10 py-8 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-white/70">
             © {new Date().getFullYear()} Fertig Haus Partner Portal.
           </p>
           <LockAccessButton />

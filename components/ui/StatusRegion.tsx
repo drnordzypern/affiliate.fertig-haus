@@ -24,7 +24,7 @@ export function StatusRegion({
     <div
       role="status"
       aria-live="polite"
-      className={`rounded-sm border px-4 py-3 text-sm leading-relaxed ${toneClasses[tone]} ${className}`}
+      className={`rounded-lg border px-4 py-3 text-sm leading-relaxed ${toneClasses[tone]} ${className}`}
     >
       {children}
     </div>

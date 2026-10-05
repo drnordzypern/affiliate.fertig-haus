@@ -64,7 +64,7 @@ export default async function PortalPage() {
   return (
     <Section className="pt-16 pb-24 sm:pt-20">
       <div className="flex flex-col gap-3">
-        <h1 className="font-serif text-3xl text-charcoal-900 sm:text-4xl">
+        <h1 className="font-semibold text-3xl text-charcoal-900 sm:text-4xl">
           Partnerportal
         </h1>
         <p className="max-w-2xl text-base leading-relaxed text-charcoal-500">
@@ -84,7 +84,7 @@ export default async function PortalPage() {
           <section id="uebersicht" aria-labelledby="uebersicht-heading">
             <h2
               id="uebersicht-heading"
-              className="font-serif text-2xl text-charcoal-900"
+              className="font-semibold text-2xl text-charcoal-900"
             >
               Übersicht
             </h2>
@@ -97,7 +97,7 @@ export default async function PortalPage() {
           <section id="empfehlungslink" aria-labelledby="empfehlungslink-heading">
             <h2
               id="empfehlungslink-heading"
-              className="font-serif text-2xl text-charcoal-900"
+              className="font-semibold text-2xl text-charcoal-900"
             >
               Empfehlungslink
             </h2>

@@ -14,9 +14,9 @@ export function Section({
   return (
     <section
       id={id}
-      className={`${tone === "muted" ? "bg-stone-100/60" : ""} ${className}`}
+      className={`${tone === "muted" ? "border-y bg-white" : "border-b"} border-stone-200 ${className}`}
     >
-      <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">{children}</div>
+      <div className="mx-auto max-w-[1240px] px-4 py-20 md:px-6 md:py-24">{children}</div>
     </section>
   );
 }
@@ -48,7 +48,7 @@ export function SectionHeading({
           {eyebrow}
         </p>
       )}
-      <Heading className="font-serif text-3xl leading-tight text-charcoal-900 sm:text-4xl">
+      <Heading className="font-semibold text-3xl leading-tight text-charcoal-900 sm:text-4xl">
         {title}
       </Heading>
       {description && (

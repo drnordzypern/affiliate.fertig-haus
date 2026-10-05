@@ -114,14 +114,14 @@ const trustPoints = [
 export default function Home() {
   return (
     <>
-      <Section className="pt-16 sm:pt-20">
+      <Section className="on-dark border-b-0 bg-olive-700 [&>div]:pt-12 [&>div]:pb-24 md:[&>div]:pt-20 md:[&>div]:pb-28">
         <div className="grid gap-12 sm:grid-cols-[1.1fr_0.9fr] sm:items-center">
           <div className="flex flex-col gap-6">
-            <Badge tone="olive">Fertig Haus Partnerprogramm</Badge>
-            <h1 className="font-serif text-4xl leading-tight text-charcoal-900 sm:text-5xl">
+            <Badge tone="onDark">Fertig Haus Partnerprogramm</Badge>
+            <h1 className="text-4xl leading-tight sm:text-5xl">
               Empfehlen Sie Fertig Haus weiter – als Partnerin oder Partner.
             </h1>
-            <p className="max-w-xl text-lg leading-relaxed text-charcoal-500">
+            <p className="max-w-xl text-lg leading-relaxed text-white/80">
               Das Fertig Haus Partnerportal richtet sich an Menschen und
               Organisationen, die passende Interessentinnen und Interessenten
               verantwortungsvoll empfehlen möchten – mit einem persönlichen
@@ -129,21 +129,21 @@ export default function Home() {
               transparenten Provisionsinformationen.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button href="/partner-werden" variant="primary">
+              <Button href="/partner-werden" variant="cta">
                 Partner werden
               </Button>
-              <Button href="/so-funktioniert-es" variant="secondary">
+              <Button href="/so-funktioniert-es" variant="onDark">
                 So funktioniert es
               </Button>
             </div>
-            <p className="text-xs text-charcoal-500">
+            <p className="text-xs text-white/70">
               Hinweis: Die Bewerbungsstrecke ist derzeit nicht aktiv. Der
               Zugang zum Partnerportal erfolgt ausschließlich über eine
               persönliche Einladung.
             </p>
           </div>
 
-          <Card className="bg-stone-100/70">
+          <Card>
             <p className="text-xs font-medium tracking-wide text-olive-700 uppercase">
               Auf einen Blick
             </p>
@@ -186,14 +186,14 @@ export default function Home() {
         <ol className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           {processSteps.map((item) => (
             <li key={item.step}>
-              <Card className="h-full">
-                <span className="font-serif text-2xl text-olive-600">
+              <Card className="h-full p-5!">
+                <span className="font-semibold text-2xl text-olive-600">
                   {item.step}
                 </span>
-                <h3 className="mt-3 text-base font-medium text-charcoal-900">
+                <h3 className="mt-3 text-base font-medium break-words hyphens-auto text-charcoal-900">
                   {item.title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-charcoal-500">
+                <p className="mt-2 text-sm leading-relaxed break-words hyphens-auto text-charcoal-500">
                   {item.description}
                 </p>
               </Card>
@@ -275,7 +275,7 @@ export default function Home() {
 
       <Section tone="muted">
         <div className="flex flex-col items-start gap-6 sm:items-center sm:text-center">
-          <h2 className="font-serif text-3xl text-charcoal-900 sm:text-4xl">
+          <h2 className="font-semibold text-3xl text-charcoal-900 sm:text-4xl">
             Interesse am Fertig Haus Partnerprogramm?
           </h2>
           <p className="max-w-xl text-base leading-relaxed text-charcoal-500">
@@ -283,7 +283,7 @@ export default function Home() {
             Aufnahme, garantierte Provisionen oder eine sofortige
             Kontoerstellung sind damit nicht verbunden.
           </p>
-          <Button href="/partner-werden" variant="primary">
+          <Button href="/partner-werden" variant="cta">
             Bewerbungsstrecke ansehen
           </Button>
         </div>

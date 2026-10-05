@@ -118,7 +118,7 @@ export function InvitationAcceptShell() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
-        <h1 className="font-serif text-3xl text-charcoal-900 sm:text-4xl">
+        <h1 className="font-semibold text-3xl text-charcoal-900 sm:text-4xl">
           Einladung annehmen
         </h1>
       </div>

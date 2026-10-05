@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#faf8f4",
+  themeColor: "#1a3a5b",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -36,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-stone-50 font-sans text-charcoal-900">
         <a
           href="#main-content"
-          className="skip-link rounded-sm bg-olive-700 px-4 py-2 text-sm font-medium text-stone-50"
+          className="skip-link rounded-lg bg-olive-700 px-4 py-2 text-sm font-medium text-white"
         >
           Zum Inhalt springen
         </a>

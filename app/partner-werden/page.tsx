@@ -55,7 +55,7 @@ export default function PartnerWerdenPage() {
           className="flex flex-col gap-10"
         >
           <fieldset disabled className="flex flex-col gap-5">
-            <legend className="font-serif text-lg text-charcoal-900">
+            <legend className="font-semibold text-lg text-charcoal-900">
               Persönliche Angaben & Kontakt
             </legend>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -80,7 +80,7 @@ export default function PartnerWerdenPage() {
           </fieldset>
 
           <fieldset disabled className="flex flex-col gap-5">
-            <legend className="font-serif text-lg text-charcoal-900">
+            <legend className="font-semibold text-lg text-charcoal-900">
               Partnertyp & Region
             </legend>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -100,7 +100,7 @@ export default function PartnerWerdenPage() {
           </fieldset>
 
           <fieldset disabled className="flex flex-col gap-5">
-            <legend className="font-serif text-lg text-charcoal-900">
+            <legend className="font-semibold text-lg text-charcoal-900">
               Erfahrung & Kooperation
             </legend>
             <TextAreaField
@@ -116,7 +116,7 @@ export default function PartnerWerdenPage() {
           </fieldset>
 
           <fieldset disabled className="flex flex-col gap-4">
-            <legend className="font-serif text-lg text-charcoal-900">
+            <legend className="font-semibold text-lg text-charcoal-900">
               Einwilligung
             </legend>
             <CheckboxField
@@ -140,7 +140,7 @@ export default function PartnerWerdenPage() {
               type="submit"
               disabled
               aria-describedby="form-preview-notice"
-              className="inline-flex w-fit cursor-not-allowed items-center justify-center rounded-sm border border-charcoal-900/30 bg-stone-200 px-6 py-3 text-sm font-medium text-charcoal-500"
+              className="inline-flex w-fit cursor-not-allowed items-center justify-center rounded-lg border border-charcoal-900/30 bg-stone-200 px-6 py-3 text-sm font-medium text-charcoal-500"
             >
               Bewerbung absenden
             </button>
