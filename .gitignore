@@ -46,3 +46,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local end-to-end consent-fixture copy (e2e/support/prepare-fixture-copy.mjs)
+/.e2e-consent-copy/
+/.e2e-gates-closed-copy/

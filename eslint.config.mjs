@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // opt-in end-to-end tooling (see docs/local-real-api-e2e.md)
+    "e2e/**",
+    "playwright.real-api.config.ts",
+    ".e2e-consent-copy/**",
+    ".e2e-gates-closed-copy/**",
   ]),
 ]);
 

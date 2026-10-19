@@ -494,11 +494,64 @@ one compensation logout can still leave a SalesChain session orphaned until
 SalesChain expires it. The Affiliate service cannot guarantee stronger
 cleanup without an upstream transactional or idempotent session contract.
 
+## Public journeys
+
+Two separate public journeys live on this host. They never share a route, a gate,
+a BFF handler or an upstream call, because SalesChain keeps their assets apart
+(`ReferralProfile.purpose`) and so must this repository.
+
+| | Partner application | Customer referral |
+| --- | --- | --- |
+| Pages | `/apply` (direct), `/apply/<code>` (a partner's recruitment link or QR) | `/r/<code>` (a partner's personal link or QR) |
+| BFF (same origin, POST) | `/api/applications/direct[/context]`, `/api/applications/referred/<code>[/context]` | `/api/referrals/<code>/context`, `/api/referrals/<code>/leads` |
+| SalesChain routes | `/v1/public/partner-applications/direct`, `/v1/public/programmes/<slug>/partner-applications/<code>` | `/v1/public/programmes/<slug>/referrals/<code>` (+ `/leads`) |
+| Creates | an application in review (sponsor and QR recorded on it) | a lead credited to the partner through SalesChain's attribution session |
+| Never creates | an account, partner status, a lead, a commission | an application, a commission (only documented commercial events create one) |
+| Turnstile action | `partner-application-direct` / `partner-application-referred` | `customer-referral-lead` |
+| Gate (server-only) | `AFFILIATE_PARTNER_APPLICATIONS_ENABLED` | `AFFILIATE_CUSTOMER_REFERRALS_ENABLED` |
+
+How it is built (the same rules as the invitation flow):
+
+- The browser only calls this app's own `/api/` routes; `lib/saleschain/client.ts`
+  remains the only code that calls SalesChain. No upstream address, token, tenant,
+  programme or partner id reaches the browser, and no response is cacheable or indexable.
+- Every BFF handler (`lib/public-journeys/handlers.ts`) runs in this order: feature gate
+  (404, nothing else happens), same-origin check, bounded JSON, strict validation
+  (exact keys, SalesChain's own limits), consent wording check, then one upstream call.
+  Upstream failures collapse to a fixed vocabulary (`UNAVAILABLE`, `INVALID_REQUEST`,
+  `RATE_LIMITED`, `CONFLICT`); a 404 is indistinguishable whatever caused it (unknown or
+  revoked code, closed gate, refused Turnstile challenge).
+- The QR pair and campaign values are read on the server from the page's `searchParams`
+  and handed to the form; `useSearchParams` stays unused. A half-present or malformed QR
+  pair is refused, never repaired, so a scan is never recorded as an ordinary link visit.
+- Retries: an application carries one idempotency key per distinct set of answers
+  (resending identical answers returns the original application; correcting an answer starts a
+  new key) and a fresh Turnstile token for every attempt. A customer registration has no
+  key; SalesChain de-duplicates, and the visitor gets one uniform confirmation whether the
+  contact was new or already known (so the form cannot be used to learn who is registered).
+- The pre-launch password boundary (`proxy.ts`) still covers every new page and route.
+  Nothing here adds access.
+
+### Closed until released
+
+1. Both gates default closed (exact string `true` only). Closed pages say so and make no request.
+2. **No consent wording is approved.** `lib/public-journeys/consent.ts` is empty on purpose and
+   must never hold placeholder or draft text. While no wording exists for a journey the form is
+   not rendered, SalesChain is not asked for a context (so no attribution session is written for a
+   page nobody can use), and the BFF refuses a submission. Wording is bound to the exact
+   consent policy version SalesChain reports: the form displays it, the BFF verifies the version the
+   form displayed, and SalesChain records its own version as the consent evidence.
+3. The SalesChain API needs its own production gate for each journey (see saleschain-os,
+   `docs/release/public-journey-gates.md`), a durable rate limiter and Turnstile.
+
+Activation checklist: saleschain-os `docs/release/public-journeys-activation-checklist.md`.
+Local real-API end-to-end tests: `docs/local-real-api-e2e.md`.
 ## Current state of each integration point
 
 | Area | Current state |
 | --- | --- |
-| Partner application (`/partner-werden`) | Static preview UI only. Submit action is disabled. No API call. |
+| Partner application (`/partner-werden`) | Static preview UI only. Submit action is disabled. No API call. Unchanged. |
+| Partner application (`/apply`, `/apply/<code>`) and customer referral (`/r/<code>`) | Implemented with a server-side BFF, **closed**: gates unset, no approved consent wording. See "Public journeys". |
 | Invitation acceptance (`/einladung`; legacy alias `/partner/invitation/accept`) | Implemented. Reads the URL fragment, scrubs it, runs Turnstile, submits to the BFF. New invitation links use `/einladung#token=...`. |
 | Partner portal (`/portal`) | Implemented and protected: real server-side validation via SalesChain `GET /v1/partner-sessions/me`, redirects to `/einladung` on any non-`AUTHENTICATED` outcome. No real Partner/lead/commission data; referral link shows an honest empty state. See "Protected Partner dashboard" above. |
 | BFF routes | Implemented: `app/api/partner-invitations/accept`, `app/api/partner-sessions/logout`. Both reject cross-origin requests (see "CSRF / same-origin protection") and set `Cache-Control: private, no-store` / `X-Robots-Tag: noindex...`. |

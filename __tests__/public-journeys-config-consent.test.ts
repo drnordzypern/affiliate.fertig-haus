@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { customerReferralsEnabled, partnerApplicationsEnabled } from "@/lib/public-journeys/config";
 import { approvedConsentText, approvedConsentTexts } from "@/lib/public-journeys/consent";
 
@@ -41,4 +43,11 @@ describe("consent wording registry", () => {
       expect(approvedConsentText("partnerApplication", key)).toBeNull();
     }
   });
+});
+
+test(".env.example declares both gates with no value (so a copied template stays closed)", () => {
+  const env = readFileSync(resolve(process.cwd(), ".env.example"), "utf-8");
+  for (const name of ["AFFILIATE_PARTNER_APPLICATIONS_ENABLED", "AFFILIATE_CUSTOMER_REFERRALS_ENABLED"]) {
+    expect(env).toMatch(new RegExp(`^${name}=\\s*$`, "m"));
+  }
 });
