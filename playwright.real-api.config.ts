@@ -71,6 +71,7 @@ export default defineConfig({
     { name: "consent-fixture", testMatch: "consent-fixture.e2e.ts", use: { baseURL: `http://localhost:${PORTS.fixture}` } },
     // The same shipped source with the feature gates left UNSET (the default): everything must stay closed.
     { name: "gates-closed", testMatch: "gates-closed.e2e.ts", use: { baseURL: `http://localhost:${PORTS.fixture + 1}` } },
+    { name: "visual", testMatch: "visual.e2e.ts", use: { baseURL: `http://localhost:${PORTS.fixture}` } },
   ],
   webServer: [
     {

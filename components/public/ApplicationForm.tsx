@@ -164,9 +164,9 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
     return (
       <Card className="max-w-2xl">
         <div role="status" className="flex flex-col gap-3">
-          <h2 className="font-semibold text-xl text-charcoal-900">Vielen Dank вЂ“ Ihre Bewerbung ist eingegangen.</h2>
+          <h2 className="font-semibold text-xl text-charcoal-900">Vielen Dank – Ihre Bewerbung ist eingegangen.</h2>
           <p className="text-sm leading-relaxed text-charcoal-700">
-            Ihre Bewerbung wird geprГјft. Mit dieser Bewerbung entstehen weder ein Zugang noch ein Partnerstatus noch
+            Ihre Bewerbung wird geprüft. Mit dieser Bewerbung entstehen weder ein Zugang noch ein Partnerstatus noch
             ein Provisionsanspruch.
           </p>
           {reference && (
@@ -188,7 +188,7 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
     <Card className="max-w-3xl">
       <form onSubmit={submit} className="flex flex-col gap-8" aria-label="Partnerbewerbung">
         <fieldset className="flex flex-col gap-5">
-          <legend className="font-semibold text-lg text-charcoal-900">PersГ¶nliche Angaben & Kontakt</legend>
+          <legend className="font-semibold text-lg text-charcoal-900">Persönliche Angaben & Kontakt</legend>
           <TextField id="name" name="name" label="Vor- und Nachname" required minLength={2} maxLength={120} autoComplete="name" />
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField id="email" name="email" label="E-Mail-Adresse" type="email" required maxLength={254} autoComplete="email" />
@@ -223,7 +223,7 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
             </p>
           )}
           <Button type="submit" disabled={submitting || !turnstileToken} className="w-fit">
-            {submitting ? "Wird gesendet вЂ¦" : "Bewerbung absenden"}
+            {submitting ? "Wird gesendet …" : "Bewerbung absenden"}
           </Button>
         </div>
       </form>

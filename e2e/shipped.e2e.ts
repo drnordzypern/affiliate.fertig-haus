@@ -4,7 +4,7 @@ import { footprint, installTurnstile, sameOrigin, seed, unlock, widgetActions } 
 // The application AS SHIPPED: no consent wording is approved (the registry is empty), the two
 // feature gates are open. Everything that needs a submission path must stay closed, and nothing
 // may be written to SalesChain, until wording exists for the policy version SalesChain reports.
-const PENDING = /erst verfügbar, sobald der Einwilligungstext freigegeben ist/;
+const PENDING = /Dieses Formular ist derzeit nicht verfügbar/;
 const urls = {
   direct: "/apply",
   referred: `/apply/${seed.recruitment.code}?qr=${seed.recruitment.qr}&v=${seed.recruitment.version}`,
