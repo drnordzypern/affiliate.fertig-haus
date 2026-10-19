@@ -49,6 +49,15 @@ const SERVER_ONLY_SALESCHAIN_FILES = new Set([
   "lib/saleschain/client.ts",
   "app/api/partner-invitations/accept/route.ts",
   "app/api/partner-sessions/logout/route.ts",
+  // Public journeys (partner application, customer referral): the BFF handlers
+  // and their six thin route adapters.
+  "lib/public-journeys/handlers.ts",
+  "app/api/applications/direct/context/route.ts",
+  "app/api/applications/direct/route.ts",
+  "app/api/applications/referred/[code]/context/route.ts",
+  "app/api/applications/referred/[code]/route.ts",
+  "app/api/referrals/[code]/context/route.ts",
+  "app/api/referrals/[code]/leads/route.ts",
 ]);
 
 /** The only files allowed to call `fetch` — always same-origin, never SalesChain. */
@@ -56,6 +65,8 @@ const BROWSER_FETCH_FILES = new Set([
   "components/invitation/InvitationAcceptShell.tsx",
   "components/portal/LogoutButton.tsx",
   "components/site-access/LockAccessButton.tsx",
+  "components/public/ApplicationForm.tsx",
+  "components/public/ReferralForm.tsx",
 ]);
 
 /** The only file allowed to read `window.location` (fragment token extraction / navigation). */

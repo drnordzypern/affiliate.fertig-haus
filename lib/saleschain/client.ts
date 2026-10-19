@@ -31,11 +31,14 @@ export type SalesChainErrorKind = "timeout" | "unavailable" | "rejected" | "cont
 
 export class SalesChainError extends Error {
   readonly kind: SalesChainErrorKind;
+  /** Upstream HTTP status, set only for a "rejected" (4xx) answer; never the body. */
+  readonly httpStatus: number | undefined;
 
-  constructor(kind: SalesChainErrorKind, message: string) {
+  constructor(kind: SalesChainErrorKind, message: string, httpStatus?: number) {
     super(message);
     this.name = "SalesChainError";
     this.kind = kind;
+    this.httpStatus = httpStatus;
   }
 }
 
@@ -88,9 +91,14 @@ async function readBounded(response: Response, maxBytes: number): Promise<string
   return new TextDecoder().decode(combined);
 }
 
-async function callSalesChain(
+/**
+ * The single upstream call. `maxBytes` bounds the response read (default 4 KiB,
+ * the size of every pre-existing contract); a list-bearing response may ask for
+ * more, never unbounded.
+ */
+export async function callSalesChain(
   path: string,
-  init: { method?: "GET" | "POST"; body?: unknown; authorization?: string }
+  init: { method?: "GET" | "POST"; body?: unknown; authorization?: string; maxBytes?: number }
 ): Promise<unknown> {
   const baseUrl = getSalesChainBaseUrl();
   const url = `${baseUrl}${path}`;
@@ -120,13 +128,13 @@ async function callSalesChain(
       throw new SalesChainError("contract", "SalesChain returned an unexpected redirect");
     }
 
-    const text = await readBounded(response, MAX_RESPONSE_BYTES);
+    const text = await readBounded(response, init.maxBytes ?? MAX_RESPONSE_BYTES);
 
     if (response.status >= 500) {
       throw new SalesChainError("unavailable", "SalesChain reported an upstream failure");
     }
     if (!response.ok) {
-      throw new SalesChainError("rejected", "SalesChain rejected the request");
+      throw new SalesChainError("rejected", "SalesChain rejected the request", response.status);
     }
 
     const contentType = response.headers.get("content-type") ?? "";
@@ -233,4 +241,186 @@ export async function checkPartnerSession(input: {
   } catch {
     return false;
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// Public journeys (partner application, customer referral). Every call is made
+// by this app's BFF, server-to-server, to the SalesChain public routes; the
+// browser never sees the upstream URL, and the upstream never sees the browser.
+// Response shapes are validated exactly; anything else is a "contract" error.
+// ---------------------------------------------------------------------------
+
+/** The only programme these journeys serve (the same literal the SalesChain contract pins). */
+const PROGRAMME_SLUG = "fertig-haus-affiliate-system";
+/** A customer-referral context lists the programme's products, so it may exceed 4 KiB. */
+const MAX_CONTEXT_RESPONSE_BYTES = 32_768;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type PublicTracking = {
+  qr?: string;
+  v?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+};
+
+export type PublicContext = {
+  programmeName: string;
+  brandName: string;
+  consentPolicyVersion: string;
+  /** Present for referred applications and customer referrals; absent for a direct application. */
+  attributionCorrelationId?: string;
+  /** Present for customer referrals only. */
+  products?: { code: string; name: string; description: string | null }[];
+};
+
+function isNamed(value: unknown): value is { slug: string; name: string } {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ["slug", "name"]) &&
+    typeof value.slug === "string" &&
+    typeof value.name === "string" &&
+    value.name.length > 0 &&
+    value.name.length <= 200
+  );
+}
+
+function parseContext(
+  json: unknown,
+  keys: string[],
+  options: { correlation: boolean; products: boolean }
+): PublicContext {
+  if (
+    !isRecord(json) ||
+    !hasExactKeys(json, keys) ||
+    !isNamed(json.programme) ||
+    !isNamed(json.brand) ||
+    typeof json.consentPolicyVersion !== "string" ||
+    json.consentPolicyVersion.length === 0 ||
+    json.consentPolicyVersion.length > 80 ||
+    typeof json.notice !== "string"
+  ) {
+    throw new SalesChainError("contract", "Unexpected public context response");
+  }
+
+  const context: PublicContext = {
+    programmeName: json.programme.name,
+    brandName: json.brand.name,
+    consentPolicyVersion: json.consentPolicyVersion,
+  };
+
+  if (options.correlation) {
+    if (typeof json.attributionCorrelationId !== "string" || !UUID_PATTERN.test(json.attributionCorrelationId)) {
+      throw new SalesChainError("contract", "Unexpected public context response");
+    }
+    context.attributionCorrelationId = json.attributionCorrelationId;
+  }
+
+  if (options.products) {
+    const raw = json.products;
+    if (!Array.isArray(raw) || raw.length > 100) {
+      throw new SalesChainError("contract", "Unexpected public context response");
+    }
+    context.products = raw.map((item) => {
+      if (
+        !isRecord(item) ||
+        typeof item.code !== "string" ||
+        !/^[A-Z0-9-]{2,40}$/.test(item.code) ||
+        typeof item.name !== "string" ||
+        (item.description !== null && item.description !== undefined && typeof item.description !== "string")
+      ) {
+        throw new SalesChainError("contract", "Unexpected public context response");
+      }
+      return { code: item.code, name: item.name, description: typeof item.description === "string" ? item.description : null };
+    });
+  }
+
+  return context;
+}
+
+function parseSubmission(json: unknown, keys: string[], pattern: RegExp): { publicReference: string } {
+  if (
+    !isRecord(json) ||
+    !hasExactKeys(json, keys) ||
+    typeof json.publicReference !== "string" ||
+    !pattern.test(json.publicReference)
+  ) {
+    throw new SalesChainError("contract", "Unexpected public submission response");
+  }
+  return { publicReference: json.publicReference };
+}
+
+const APPLICATION_REFERENCE = /^PA-\d{4}-[A-Z0-9]{10}$/;
+const LEAD_REFERENCE = /^LEAD-[A-Z0-9]{8}$/;
+
+function trackingQuery(tracking: PublicTracking): string {
+  const query = new URLSearchParams();
+  if (tracking.qr) query.set("qr", tracking.qr);
+  if (tracking.v) query.set("v", tracking.v);
+  if (tracking.utmSource) query.set("utm_source", tracking.utmSource);
+  if (tracking.utmMedium) query.set("utm_medium", tracking.utmMedium);
+  if (tracking.utmCampaign) query.set("utm_campaign", tracking.utmCampaign);
+  if (tracking.utmTerm) query.set("utm_term", tracking.utmTerm);
+  if (tracking.utmContent) query.set("utm_content", tracking.utmContent);
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
+/** Direct (sponsor-free) application: GET /v1/public/partner-applications/direct. */
+export async function resolveDirectApplication(): Promise<PublicContext> {
+  const json = await callSalesChain("/v1/public/partner-applications/direct", { method: "GET" });
+  return parseContext(json, ["programme", "brand", "consentPolicyVersion", "notice"], {
+    correlation: false,
+    products: false,
+  });
+}
+
+export async function submitDirectApplication(body: Record<string, unknown>): Promise<{ publicReference: string }> {
+  const json = await callSalesChain("/v1/public/partner-applications/direct", { method: "POST", body });
+  return parseSubmission(json, ["publicReference", "status"], APPLICATION_REFERENCE);
+}
+
+/** Referred application (a partner's recruitment link or QR): purpose PARTNER_RECRUITMENT. */
+export async function resolveReferredApplication(code: string, tracking: PublicTracking): Promise<PublicContext> {
+  const path = `/v1/public/programmes/${PROGRAMME_SLUG}/partner-applications/${encodeURIComponent(code)}`;
+  const json = await callSalesChain(`${path}${trackingQuery({ qr: tracking.qr, v: tracking.v })}`, { method: "GET" });
+  return parseContext(json, ["programme", "brand", "attributionCorrelationId", "consentPolicyVersion", "notice"], {
+    correlation: true,
+    products: false,
+  });
+}
+
+export async function submitReferredApplication(
+  code: string,
+  body: Record<string, unknown>
+): Promise<{ publicReference: string }> {
+  const path = `/v1/public/programmes/${PROGRAMME_SLUG}/partner-applications/${encodeURIComponent(code)}`;
+  const json = await callSalesChain(path, { method: "POST", body });
+  return parseSubmission(json, ["publicReference", "status"], APPLICATION_REFERENCE);
+}
+
+/** Customer referral (a partner's personal link or QR): purpose CUSTOMER_REFERRAL. Creates attribution, never a recruitment. */
+export async function resolveCustomerReferral(code: string, tracking: PublicTracking): Promise<PublicContext> {
+  const path = `/v1/public/programmes/${PROGRAMME_SLUG}/referrals/${encodeURIComponent(code)}`;
+  const json = await callSalesChain(`${path}${trackingQuery(tracking)}`, {
+    method: "GET",
+    maxBytes: MAX_CONTEXT_RESPONSE_BYTES,
+  });
+  return parseContext(
+    json,
+    ["programme", "brand", "products", "attributionCorrelationId", "consentPolicyVersion", "notice"],
+    { correlation: true, products: true }
+  );
+}
+
+export async function submitCustomerReferral(
+  code: string,
+  body: Record<string, unknown>
+): Promise<{ publicReference: string }> {
+  const path = `/v1/public/programmes/${PROGRAMME_SLUG}/referrals/${encodeURIComponent(code)}/leads`;
+  const json = await callSalesChain(path, { method: "POST", body });
+  return parseSubmission(json, ["publicReference", "status"], LEAD_REFERENCE);
 }

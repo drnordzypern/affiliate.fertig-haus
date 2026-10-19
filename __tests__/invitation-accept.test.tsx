@@ -19,7 +19,7 @@ vi.mock("next/script", () => ({
 
 type TurnstileRenderOptions = {
   sitekey: string;
-  action: "partner-invitation-acceptance";
+  action: string;
   callback: (token: string) => void;
   "error-callback"?: () => void;
 };
