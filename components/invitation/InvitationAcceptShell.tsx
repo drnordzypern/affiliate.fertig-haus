@@ -48,7 +48,9 @@ export function InvitationAcceptShell() {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
   useEffect(() => {
-    const token = extractTokenFromFragment(window.location.hash);
+    // React Strict Mode runs this effect twice; the second run finds the fragment already scrubbed and must keep the
+    // token the first run captured. Once submitted, the ref is cleared and submittedRef blocks any second submission.
+    const token = extractTokenFromFragment(window.location.hash) ?? invitationTokenRef.current;
 
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
 
@@ -56,7 +58,6 @@ export function InvitationAcceptShell() {
       // The initial phase can only be derived from `window.location`, a
       // browser-only global unavailable during SSR — there is no render-phase
       // alternative and nothing external to subscribe to instead.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase("missing-token");
       return;
     }

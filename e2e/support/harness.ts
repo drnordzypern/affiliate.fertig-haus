@@ -12,6 +12,8 @@ export type Seed = {
   product: { code: string; name: string };
   customerReferral: { code: string; qr: string; version: number; profileId: string };
   recruitment: { code: string; qr: string; version: number; profileId: string };
+  /** A locally signed session of the fixture's Business Admin (full-journey test only). */
+  businessAdmin: { membershipId: string; token: string };
 };
 
 export const seed = JSON.parse(readFileSync(process.env.E2E_SEED_FILE ?? "", "utf8")) as Seed;
@@ -19,6 +21,8 @@ export const seed = JSON.parse(readFileSync(process.env.E2E_SEED_FILE ?? "", "ut
 // Must equal the values in playwright.real-api.config.ts.
 export const SITE_PASSWORD = "e2e-site-access-password";
 export const TURNSTILE_HOSTNAME = "affiliate.fertig-haus.net";
+/** The local SalesChain API (PORTS.api); used directly only for the Business Admin's own calls. */
+export const SALESCHAIN_API = "http://127.0.0.1:4461";
 
 const PSQL = process.env.PSQL ?? "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe";
 

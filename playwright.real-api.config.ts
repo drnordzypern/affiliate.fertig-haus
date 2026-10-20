@@ -65,6 +65,9 @@ export default defineConfig({
     : [["line"]],
   use: { trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [
+    // The whole chain on the fixture copy: application, Business Admin approval, invitation, customer enquiry, CRM.
+    // First: the consent-fixture rate-limit test saturates the direct-application bucket on purpose.
+    { name: "journey", testMatch: "journey.e2e.ts", use: { baseURL: `http://localhost:${PORTS.fixture}` } },
     // As shipped: no consent wording approved, journeys closed unless the gates are set.
     { name: "shipped", testMatch: "shipped.e2e.ts", use: { baseURL: `http://localhost:${PORTS.shipped}` } },
     // A copy with clearly-labelled fixture wording, so the forms that only exist once wording is approved can run.
@@ -100,6 +103,9 @@ export default defineConfig({
         PUBLIC_REFERRAL_INTAKE_ENABLED: "true",
         PUBLIC_PARTNER_APPLICATIONS_DIRECT_PROGRAMME_SLUG: "fertig-haus-affiliate-system",
         PUBLIC_REFERRAL_RATE_LIMIT_MODE: "database",
+        // Partner access after approval (invitation acceptance and the partner session), as in production.
+        PARTNER_SESSION_ENABLED: "true",
+        PUBLIC_PARTNER_INVITATION_ACCEPTANCE_ENABLED: "true",
         TURNSTILE_SECRET_KEY: TURNSTILE_SECRET,
         TURNSTILE_ALLOWED_HOSTNAMES: TURNSTILE_HOSTNAME,
       },
