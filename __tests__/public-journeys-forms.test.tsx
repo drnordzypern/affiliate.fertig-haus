@@ -95,7 +95,7 @@ describe("partner application form", () => {
   test("no approved consent wording: no form, no checkbox, no submit button", async () => {
     fetchMock.mockResolvedValueOnce(res(context({ consent: { version: "policy-1", text: null } })));
     direct();
-    expect(await screen.findByText(/erst verfügbar, sobald der Einwilligungstext freigegeben ist/)).toBeTruthy();
+    expect(await screen.findByText(/Dieses Formular ist derzeit nicht verfügbar/)).toBeTruthy();
     expect(screen.queryByRole("form")).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByRole("button", { name: /absenden/ })).toBeNull();
@@ -105,13 +105,13 @@ describe("partner application form", () => {
   test("nothing approved at all (no version): the same pending state, never a form", async () => {
     fetchMock.mockResolvedValueOnce(res({ status: "OK", consent: { version: null, text: null } }));
     direct();
-    expect(await screen.findByText(/erst verfügbar, sobald der Einwilligungstext freigegeben ist/)).toBeTruthy();
+    expect(await screen.findByText(/Dieses Formular ist derzeit nicht verfügbar/)).toBeTruthy();
     expect(screen.queryByRole("form")).toBeNull();
     expect(renderMock).not.toHaveBeenCalled();
     cleanup();
     fetchMock.mockResolvedValueOnce(res({ status: "OK", consent: { version: null, text: null } }));
     render(<ReferralForm code={CODE} tracking={{}} enabled />);
-    expect(await screen.findByText(/erst verfügbar, sobald der Einwilligungstext freigegeben ist/)).toBeTruthy();
+    expect(await screen.findByText(/Dieses Formular ist derzeit nicht verfügbar/)).toBeTruthy();
     expect(screen.queryByRole("form")).toBeNull();
   });
 
@@ -325,7 +325,7 @@ describe("customer referral form", () => {
   test("no approved wording, or no products: nothing to submit", async () => {
     fetchMock.mockResolvedValueOnce(res({ ...ready(), consent: { version: "policy-1", text: null } }));
     referral();
-    expect(await screen.findByText(/erst verfügbar, sobald der Einwilligungstext freigegeben ist/)).toBeTruthy();
+    expect(await screen.findByText(/Dieses Formular ist derzeit nicht verfügbar/)).toBeTruthy();
     expect(screen.queryByRole("form")).toBeNull();
     cleanup();
     fetchMock.mockResolvedValueOnce(res({ ...ready(), products: [] }));

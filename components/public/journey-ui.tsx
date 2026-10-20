@@ -62,7 +62,7 @@ export const MESSAGES = {
   securityCheckUnavailable:
     "Die Sicherheitsprüfung ist derzeit nicht verfügbar. Das Formular kann deshalb nicht abgesendet werden.",
   consentPending:
-    "Dieses Formular ist erst verfügbar, sobald der Einwilligungstext freigegeben ist. Es werden bis dahin keine Eingaben entgegengenommen.",
+    "Dieses Formular ist derzeit nicht verfügbar.",
   invalid: "Bitte prüfen Sie Ihre Angaben und versuchen Sie es erneut.",
   rateLimited: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
   notAccepted: "Die Angaben konnten nicht angenommen werden. Bitte versuchen Sie es erneut.",
