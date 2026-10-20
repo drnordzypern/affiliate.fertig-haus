@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 import { approvedConsentTexts, type ApprovedConsent } from "@/lib/public-journeys/consent";
+import { legalLinks } from "@/lib/legal-config";
 
 // Guards the day wording is approved and committed: an entry may not carry a version string the SalesChain API
 // would refuse in production, or text that is still a placeholder. Today the registry is empty, so the
@@ -39,5 +40,26 @@ describe("consent registry guard", () => {
   test("accepts a complete, plain entry", () => {
     const text = { paragraphs: ["Ich willige in die Verarbeitung meiner Angaben ein."], checkboxLabel: "Ich willige ein." };
     expect(registryProblems({ "2026-11-01": { partnerApplication: text, customerReferral: text } })).toEqual([]);
+  });
+});
+
+describe("legal links", () => {
+  // The footer renders a legal link only when it is available AND has an href. Once the owner decides, a link
+  // must be a complete https URL on fertig-haus.net, never half-configured and never a placeholder.
+  test.each(Object.entries(legalLinks))("%s is either fully absent or a complete https fertig-haus.net URL", (_name, entry) => {
+    if (!entry.available) {
+      expect(entry.href).toBeUndefined();
+      return;
+    }
+    expect(entry.href).toBeDefined();
+    const url = new URL(entry.href as string);
+    expect(url.protocol).toBe("https:");
+    expect(["fertig-haus.net", "www.fertig-haus.net"]).toContain(url.hostname);
+    expect(url.search + url.hash).toBe("");
+  });
+
+  test("a link marked available without an href, or with one while unavailable, is a failure", () => {
+    const bad = [{ available: true, href: undefined }, { available: false, href: "https://fertig-haus.net/impressum" }];
+    for (const entry of bad) expect(entry.available === Boolean(entry.href)).toBe(false);
   });
 });

@@ -29,7 +29,9 @@ const context = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-function solveTurnstile(token = "cf-token") {
+async function solveTurnstile(token = "cf-token") {
+  // the widget is rendered by an effect after the form appears; wait for it instead of racing it
+  await waitFor(() => expect(renderMock).toHaveBeenCalled());
   const last = renderMock.mock.calls[renderMock.mock.calls.length - 1]!;
   act(() => last[1].callback(token));
 }
@@ -131,8 +133,9 @@ describe("partner application form", () => {
     expect(checkbox.checked).toBe(false);
     expect(checkbox.required).toBe(true);
     expect((screen.getByRole("button", { name: "Bewerbung absenden" }) as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(renderMock).toHaveBeenCalled());
     expect(renderMock.mock.calls[0]![1].action).toBe("partner-application-direct");
-    solveTurnstile();
+    await solveTurnstile();
     expect((screen.getByRole("button", { name: "Bewerbung absenden" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -141,7 +144,7 @@ describe("partner application form", () => {
     direct();
     await screen.findByRole("form");
     fillApplication();
-    solveTurnstile("cf-token-1");
+    await solveTurnstile("cf-token-1");
     fireEvent.submit(screen.getByRole("form"));
     expect(await screen.findByText("PA-2026-ABCDEF0123")).toBeTruthy();
 
@@ -170,9 +173,10 @@ describe("partner application form", () => {
     await screen.findByRole("form");
     expect(fetchMock.mock.calls[0]![0]).toBe(`/api/applications/referred/${CODE}/context`);
     expect(JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string)).toEqual({ qr: "fhqr_public_asset", v: "2" });
+    await waitFor(() => expect(renderMock).toHaveBeenCalled());
     expect(renderMock.mock.calls[0]![1].action).toBe("partner-application-referred");
     fillApplication();
-    solveTurnstile();
+    await solveTurnstile();
     fireEvent.submit(screen.getByRole("form"));
     await screen.findByText("PA-2026-ABCDEF0123");
     expect(fetchMock.mock.calls[1]![0]).toBe(`/api/applications/referred/${CODE}`);
@@ -189,7 +193,7 @@ describe("partner application form", () => {
     direct();
     await screen.findByRole("form");
     fillApplication();
-    solveTurnstile("cf-token-1");
+    await solveTurnstile("cf-token-1");
     fireEvent.submit(screen.getByRole("form"));
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toBe("Die Angaben konnten nicht angenommen werden. Bitte versuchen Sie es erneut.");
@@ -200,7 +204,7 @@ describe("partner application form", () => {
     await waitFor(() => expect(renderMock).toHaveBeenCalledTimes(2));
     expect((screen.getByRole("button", { name: "Bewerbung absenden" }) as HTMLButtonElement).disabled).toBe(true);
 
-    solveTurnstile("cf-token-2");
+    await solveTurnstile("cf-token-2");
     fireEvent.submit(screen.getByRole("form"));
     await screen.findByText("PA-2026-ABCDEF0123");
     expect(bodyOf(2).idempotencyKey).toBe(bodyOf(1).idempotencyKey);
@@ -215,12 +219,12 @@ describe("partner application form", () => {
     direct();
     await screen.findByRole("form");
     fillApplication();
-    solveTurnstile("t1");
+    await solveTurnstile("t1");
     fireEvent.submit(screen.getByRole("form"));
     await screen.findByRole("alert");
     expect(screen.getByRole("alert").textContent).toMatch(/Ihre Eingaben bleiben erhalten/);
     fill("name", "Erika Beispiel");
-    solveTurnstile("t2");
+    await solveTurnstile("t2");
     fireEvent.submit(screen.getByRole("form"));
     await screen.findByText("PA-2026-ABCDEF0123");
     expect(bodyOf(2).idempotencyKey).not.toBe(bodyOf(1).idempotencyKey);
@@ -236,7 +240,7 @@ describe("partner application form", () => {
     direct();
     await screen.findByRole("form");
     fillApplication();
-    solveTurnstile();
+    await solveTurnstile();
     fireEvent.submit(screen.getByRole("form"));
     expect((await screen.findByRole("alert")).textContent).toMatch(message);
   });
@@ -246,7 +250,7 @@ describe("partner application form", () => {
     direct();
     await screen.findByRole("form");
     fillApplication();
-    solveTurnstile();
+    await solveTurnstile();
     fireEvent.submit(screen.getByRole("form"));
     expect((await screen.findByRole("alert")).textContent).toMatch(/Ihre Eingaben bleiben erhalten/);
     expect((document.getElementById("email") as HTMLInputElement).value).toBe("erika@example.invalid");
@@ -258,7 +262,7 @@ describe("partner application form", () => {
     direct();
     await screen.findByRole("form");
     fillApplication();
-    solveTurnstile();
+    await solveTurnstile();
     fireEvent.submit(screen.getByRole("form"));
     fireEvent.submit(screen.getByRole("form"));
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -317,6 +321,7 @@ describe("customer referral form", () => {
       utmSource: "newsletter",
     });
     expect(screen.getByRole("option", { name: "Musterhaus Zwei" })).toBeTruthy();
+    await waitFor(() => expect(renderMock).toHaveBeenCalled());
     expect(renderMock.mock.calls[0]![1].action).toBe("customer-referral-lead");
     // the visitor is never told who referred them
     expect(document.body.textContent).not.toMatch(/Partner|Empfohlen von|empfohlen durch/i);
@@ -338,7 +343,7 @@ describe("customer referral form", () => {
     referral();
     await screen.findByRole("form");
     fillReferral();
-    solveTurnstile("cf-token-1");
+    await solveTurnstile("cf-token-1");
     fireEvent.submit(screen.getByRole("form"));
     expect(await screen.findByText(/Ihre Anfrage ist eingegangen/)).toBeTruthy();
     expect(fetchMock.mock.calls[1]![0]).toBe(`/api/referrals/${CODE}/leads`);
@@ -364,12 +369,12 @@ describe("customer referral form", () => {
     referral();
     await screen.findByRole("form");
     fillReferral();
-    solveTurnstile("cf-token-1");
+    await solveTurnstile("cf-token-1");
     fireEvent.submit(screen.getByRole("form"));
     expect((await screen.findByRole("alert")).textContent).toBe("Die Angaben konnten nicht angenommen werden. Bitte versuchen Sie es erneut.");
     await waitFor(() => expect(renderMock).toHaveBeenCalledTimes(2));
     expect((document.getElementById("firstName") as HTMLInputElement).value).toBe("Erika");
-    solveTurnstile("cf-token-2");
+    await solveTurnstile("cf-token-2");
     fireEvent.submit(screen.getByRole("form"));
     await screen.findByText(/Ihre Anfrage ist eingegangen/);
     expect(bodyOf(2).turnstileToken).toBe("cf-token-2");
