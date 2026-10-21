@@ -243,6 +243,73 @@ export async function checkPartnerSession(input: {
   }
 }
 
+export type PartnerReferralLink = {
+  purpose: "CUSTOMER_REFERRAL" | "PARTNER_RECRUITMENT";
+  /** The public link, always on https://affiliate.fertig-haus.net. */
+  url: string;
+  /** What the QR code encodes: the link plus `qr` and `v`, or null without an active QR asset. */
+  qrUrl: string | null;
+};
+
+const LINK_PATH = { CUSTOMER_REFERRAL: /^\/r\/[A-Z0-9-]{8,80}$/, PARTNER_RECRUITMENT: /^\/apply\/[A-Z0-9-]{8,80}$/ } as const;
+
+function parseReferralLink(value: unknown): PartnerReferralLink | null {
+  if (!isRecord(value) || !hasExactKeys(value, ["purpose", "url", "qrUrl"])) return null;
+  const { purpose, url, qrUrl } = value;
+  if (purpose !== "CUSTOMER_REFERRAL" && purpose !== "PARTNER_RECRUITMENT") return null;
+  if (typeof url !== "string") return null;
+  let link: URL;
+  try {
+    link = new URL(url);
+  } catch {
+    return null;
+  }
+  if (link.protocol !== "https:" || link.host !== "affiliate.fertig-haus.net" || link.search || link.hash) return null;
+  if (!LINK_PATH[purpose].test(link.pathname)) return null;
+  if (qrUrl === null) return { purpose, url: link.toString(), qrUrl: null };
+  if (typeof qrUrl !== "string") return null;
+  let target: URL;
+  try {
+    target = new URL(qrUrl);
+  } catch {
+    return null;
+  }
+  const params = [...target.searchParams.keys()];
+  if (
+    target.origin !== link.origin ||
+    target.pathname !== link.pathname ||
+    target.hash ||
+    params.length !== 2 ||
+    !/^[A-Za-z0-9_-]{8,100}$/.test(target.searchParams.get("qr") ?? "") ||
+    !/^[1-9]\d{0,5}$/.test(target.searchParams.get("v") ?? "")
+  )
+    return null;
+  return { purpose, url: link.toString(), qrUrl: target.toString() };
+}
+
+/**
+ * The signed-in Partner's own referral links (`GET /v1/partner-sessions/me/referral-links`).
+ * SalesChain derives the Partner from the session itself. Returns null on ANY failure (rejected
+ * session, timeout, malformed or extra-field response, a link off the affiliate host): the portal
+ * then shows that the links are currently unavailable - it never shows a partial or derived link.
+ */
+export async function getOwnReferralLinks(input: {
+  partnerSessionToken: string;
+}): Promise<PartnerReferralLink[] | null> {
+  try {
+    const json = await callSalesChain("/v1/partner-sessions/me/referral-links", {
+      method: "GET",
+      authorization: `Bearer ${input.partnerSessionToken}`,
+    });
+    if (!isRecord(json) || !hasExactKeys(json, ["links"]) || !Array.isArray(json.links) || json.links.length > 10)
+      return null;
+    const links = json.links.map(parseReferralLink);
+    return links.every((link): link is PartnerReferralLink => link !== null) ? links : null;
+  } catch {
+    return null;
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // Public journeys (partner application, customer referral). Every call is made

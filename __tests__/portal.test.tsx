@@ -11,12 +11,13 @@ const { cookies, cookieStore } = vi.hoisted(() => {
   return { cookies: vi.fn(async () => store), cookieStore: store };
 });
 
-const { redirectMock, routerReplace, checkPartnerSessionMock } = vi.hoisted(() => ({
+const { redirectMock, routerReplace, checkPartnerSessionMock, getOwnReferralLinksMock } = vi.hoisted(() => ({
   redirectMock: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
   }),
   routerReplace: vi.fn(),
   checkPartnerSessionMock: vi.fn(),
+  getOwnReferralLinksMock: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({ cookies }));
@@ -26,7 +27,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/saleschain/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/saleschain/client")>();
-  return { ...actual, checkPartnerSession: checkPartnerSessionMock };
+  return { ...actual, checkPartnerSession: checkPartnerSessionMock, getOwnReferralLinks: getOwnReferralLinksMock };
 });
 
 const { default: PortalPage } = await import("@/app/portal/page");
@@ -37,7 +38,13 @@ function reset() {
   cookieStore.__clear();
   redirectMock.mockClear();
   checkPartnerSessionMock.mockReset();
+  getOwnReferralLinksMock.mockReset();
+  getOwnReferralLinksMock.mockResolvedValue([]);
 }
+
+const CUSTOMER_URL = "https://affiliate.fertig-haus.net/r/FH-ABCDEF1234567890";
+const CUSTOMER_QR = `${CUSTOMER_URL}?qr=fhqr_customer01&v=1`;
+const RECRUIT_URL = "https://affiliate.fertig-haus.net/apply/FH-0987654321FEDCBA";
 
 /**
  * DNL1-63: cookie presence/shape alone is never authorization. These
@@ -170,4 +177,65 @@ test("navigation labels unavailable modules clearly, without linking to a non-ex
     expect(badge.closest("a")).toBeNull();
   }
   expect(nav.querySelector('a[href="#empfehlungslink"]')).not.toBeNull();
+});
+
+test("shows the Partner's own customer and recruitment links with a downloadable QR code each", async () => {
+  reset();
+  cookieStore.__set("partner_session", VALID_SESSION_TOKEN);
+  checkPartnerSessionMock.mockResolvedValue(true);
+  getOwnReferralLinksMock.mockResolvedValue([
+    { purpose: "CUSTOMER_REFERRAL", url: CUSTOMER_URL, qrUrl: CUSTOMER_QR },
+    { purpose: "PARTNER_RECRUITMENT", url: RECRUIT_URL, qrUrl: `${RECRUIT_URL}?qr=fhqr_recruit001&v=1` },
+  ]);
+
+  render(await PortalPage());
+
+  expect(getOwnReferralLinksMock).toHaveBeenCalledWith({ partnerSessionToken: VALID_SESSION_TOKEN });
+  expect(screen.getByDisplayValue(CUSTOMER_URL)).toBeDefined();
+  expect(screen.getByDisplayValue(RECRUIT_URL)).toBeDefined();
+  const customerQr = screen.getByAltText("QR-Code Ihres Empfehlungslinks") as HTMLImageElement;
+  expect(customerQr.src).toMatch(/^data:image\/png;base64,/);
+  const downloads = screen.getAllByRole("link", { name: "QR-Code herunterladen" });
+  expect(downloads.map((link) => link.getAttribute("download"))).toEqual([
+    "fertig-haus-empfehlungslink-qr.png",
+    "fertig-haus-bewerbungslink-qr.png",
+  ]);
+  expect(downloads[0].getAttribute("href")).toBe(customerQr.src);
+  expect(screen.getByText("Für die Gewinnung von Partnern entsteht keine Provision.")).toBeDefined();
+  expect(screen.queryByText("Noch kein Empfehlungslink")).toBeNull();
+});
+
+test("says the links are unavailable (not empty, not invented) when SalesChain cannot be read", async () => {
+  reset();
+  cookieStore.__set("partner_session", VALID_SESSION_TOKEN);
+  checkPartnerSessionMock.mockResolvedValue(true);
+  getOwnReferralLinksMock.mockResolvedValue(null);
+
+  render(await PortalPage());
+
+  expect(screen.getByText("Links derzeit nicht verfügbar")).toBeDefined();
+  expect(screen.queryByRole("textbox")).toBeNull();
+  expect(screen.queryByRole("img")).toBeNull();
+});
+
+test("a link without an active QR asset shows the link and no QR or download", async () => {
+  reset();
+  cookieStore.__set("partner_session", VALID_SESSION_TOKEN);
+  checkPartnerSessionMock.mockResolvedValue(true);
+  getOwnReferralLinksMock.mockResolvedValue([{ purpose: "CUSTOMER_REFERRAL", url: CUSTOMER_URL, qrUrl: null }]);
+
+  render(await PortalPage());
+
+  expect(screen.getByDisplayValue(CUSTOMER_URL)).toBeDefined();
+  expect(screen.queryByRole("img")).toBeNull();
+  expect(screen.queryByRole("link", { name: "QR-Code herunterladen" })).toBeNull();
+});
+
+test("never asks SalesChain for links before the session check passed", async () => {
+  reset();
+  cookieStore.__set("partner_session", VALID_SESSION_TOKEN);
+  checkPartnerSessionMock.mockResolvedValue(false);
+
+  await expect(PortalPage()).rejects.toThrow("REDIRECT:/einladung");
+  expect(getOwnReferralLinksMock).not.toHaveBeenCalled();
 });

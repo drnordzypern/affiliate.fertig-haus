@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { StrictMode } from "react";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import CanonicalInvitationPage from "@/app/einladung/page";
 import { InvitationAcceptShell } from "@/components/invitation/InvitationAcceptShell";
@@ -188,6 +189,29 @@ test("submits only invitationToken and turnstileToken to the BFF, and never rend
   expect(container.innerHTML).not.toMatch(/loginBootstrapToken/i);
   expect(container.innerHTML).not.toMatch(/partnerSessionToken/i);
   expect(container.innerHTML).not.toMatch(/#token=/i);
+});
+
+// React Strict Mode (on in `next dev`) runs the mount effect twice. The first run captures the token and scrubs the
+// fragment; the second must keep the captured token instead of reporting a missing invitation.
+test("accepts the invitation when the mount effect runs twice (React Strict Mode)", async () => {
+  window.history.pushState(null, "", `/einladung#token=${VALID_TOKEN}`);
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(mockJsonResponse({ status: "AUTHENTICATED" }, 200));
+
+  render(
+    <StrictMode>
+      <InvitationAcceptShell />
+    </StrictMode>
+  );
+
+  expect(window.location.hash).toBe("");
+  await waitFor(() => expect(renderMock).toHaveBeenCalled());
+  triggerTurnstileCallback();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).invitationToken).toBe(VALID_TOKEN);
+  await waitFor(() => screen.getByText(/Einladung wurde angenommen/i));
+  expect(screen.queryByText(/keine gültige Einladung/i)).toBeNull();
 });
 
 test("ignores repeated Turnstile callbacks so acceptance and redemption cannot be replayed", async () => {

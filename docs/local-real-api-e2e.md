@@ -23,6 +23,7 @@ database in any other mode.
 | `shipped` | this app, gates open, registry empty | password boundary still guards every page and route; with no approved wording each page says so, shows no form, SalesChain records nothing, and the BFF cannot be bypassed; cross-origin calls are refused |
 | `consent-fixture` | copy with fixture wording, gates open | direct and referred applications (sponsor, QR, consent version, audit), customer referral (partner credit, QR, campaign values, consent evidence, no application, no commission), lost-answer retry, Turnstile refusal (bad token, wrong action, wrong hostname), validation, repeat registration, purpose separation, revoked/unknown/half-present QR, nothing sensitive in the browser, rate limiting |
 | `gates-closed` | shipped source, gates unset | every page closed, every BFF route 404, SalesChain never contacted |
+| `journey` | copy with fixture wording, gates open, partner session and invitation acceptance on in the local API | the whole chain once: `/apply` -> one PENDING application -> a Business Admin (locally signed session from the seed) lists and approves it through the SalesChain API (unauthenticated decision refused) -> Partner with customer and recruitment link + QR on `affiliate.fertig-haus.net` -> invitation issued, accepted on `/einladung`, `/portal` reached -> customer enquiry on `/r/<code>?qr=...` -> one Lead credited to the new partner (QR channel, consent version) -> visible in the Business Admin's CRM lead list; no commission row at any step |
 
 ## Run
 

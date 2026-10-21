@@ -115,7 +115,8 @@ returns no email, name, Partner/Membership/Tenant/Programme id, or
 referral identifier by design. Every future request for real Partner
 business data (referrals, commissions, profile) still needs its own,
 separately-approved SalesChain contract; this repository does not invent
-one — see "Known limitation: no referral/QR data source" below.
+one. The one exception so far is the Partner's own referral links — see
+"Partner referral links" below.
 
 ## Protected Partner dashboard
 
@@ -157,22 +158,25 @@ cookie is re-validated against SalesChain on every visit and can never
 grant access on its own; it is only cleared by logout or its own 8-hour
 expiry.
 
-## Known limitation: no referral/QR data source
+## Partner referral links
 
-SalesChain's bootstrap-redemption response is exactly
-`{ partnerSessionToken }`, and `GET /v1/partner-sessions/me` returns
-exactly `{ status: "AUTHENTICATED" }` (see "Approved SalesChain contract"
-above) — deliberately no partner id, referral code, or profile data from
-either. There is therefore still no existing, authenticated SalesChain
-endpoint this repository can call to obtain a Partner's referral URL, and
-no Affiliate-side configuration can substitute for it, since a referral
-URL is inherently per-Partner data only SalesChain can issue.
-`components/portal/ReferralLinkCard.tsx` therefore renders only an honest
-empty state and no QR code is generated (there is nothing to encode). A
-future Partner-resource contract returning at least a referral URL/code —
-separate from, and in addition to, the session-validation contract above
-— is required before this repository can implement a real referral link
-or QR code.
+`GET /v1/partner-sessions/me/referral-links` (SalesChain, same partner-session
+guard as `me`) returns exactly `{ links: [{ purpose, url, qrUrl }] }`: the
+signed-in Partner's own usable customer link (`/r/<code>`) and recruitment
+link (`/apply/<code>`). SalesChain derives the Partner from the session row
+itself, never from anything this app sends, and lists only links a visitor
+can use now (approved enrollment, active programme, active profile, verified
+domain). `qrUrl` is exactly what the QR code encodes (the link plus the
+active QR asset's `qr` and `v`), or null.
+
+`lib/saleschain/client.ts#getOwnReferralLinks` validates the shape exactly
+(no extra fields, https on `affiliate.fertig-haus.net` only, the right path
+per purpose, a QR payload for the same link with only `qr` and `v`) and
+returns null on any failure. `app/portal/page.tsx` calls it only after the
+session check passed, renders each QR code on the server as a PNG data URL
+(`qrcode`), and `components/portal/ReferralLinkCard.tsx` shows the link with
+copy and "QR-Code herunterladen". A failed read shows "Links derzeit nicht
+verfügbar", never a partial or derived link.
 
 ## CSRF / same-origin protection
 
