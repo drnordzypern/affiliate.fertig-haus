@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   acceptInvitation,
   checkPartnerSession,
+  getOwnReferralLinks,
   logoutPartnerSession,
   redeemBootstrapToken,
   SalesChainError,
@@ -398,4 +399,53 @@ test("SalesChainError never carries the raw upstream response body", async () =>
     expect(error).toBeInstanceOf(SalesChainError);
     expect((error as Error).message).not.toMatch(/secret upstream detail/);
   }
+});
+
+const OWN_CUSTOMER = {
+  purpose: "CUSTOMER_REFERRAL",
+  url: "https://affiliate.fertig-haus.net/r/FH-ABCDEF1234567890",
+  qrUrl: "https://affiliate.fertig-haus.net/r/FH-ABCDEF1234567890?qr=fhqr_customer01&v=1",
+};
+const OWN_RECRUIT = {
+  purpose: "PARTNER_RECRUITMENT",
+  url: "https://affiliate.fertig-haus.net/apply/FH-0987654321FEDCBA",
+  qrUrl: null,
+};
+
+test("getOwnReferralLinks sends a bodiless GET with the bearer token and returns the validated links", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ links: [OWN_CUSTOMER, OWN_RECRUIT] }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  expect(await getOwnReferralLinks({ partnerSessionToken: VALID_TOKEN })).toEqual([OWN_CUSTOMER, OWN_RECRUIT]);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe("https://api.saleschain.example/v1/partner-sessions/me/referral-links");
+  expect(init.method).toBe("GET");
+  expect(init.headers.authorization).toBe(`Bearer ${VALID_TOKEN}`);
+  expect(init.body).toBeUndefined();
+});
+
+test("getOwnReferralLinks returns an empty list unchanged", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ links: [] })));
+  expect(await getOwnReferralLinks({ partnerSessionToken: VALID_TOKEN })).toEqual([]);
+});
+
+test.each([
+  ["a rejected session", jsonResponse({ message: "no" }, 401)],
+  ["an upstream failure", jsonResponse({ message: "no" }, 503)],
+  ["an extra top-level field", jsonResponse({ links: [], partnerId: "p-1" })],
+  ["an extra link field", jsonResponse({ links: [{ ...OWN_CUSTOMER, partnerId: "p-1" }] })],
+  ["a link on another host", jsonResponse({ links: [{ ...OWN_CUSTOMER, url: "https://evil.example/r/FH-ABCDEF1234567890", qrUrl: null }] })],
+  ["a plain-http link", jsonResponse({ links: [{ ...OWN_CUSTOMER, url: "http://affiliate.fertig-haus.net/r/FH-ABCDEF1234567890", qrUrl: null }] })],
+  ["a customer link on the recruitment path", jsonResponse({ links: [{ ...OWN_CUSTOMER, url: "https://affiliate.fertig-haus.net/apply/FH-ABCDEF1234567890", qrUrl: null }] })],
+  ["a QR payload for another link", jsonResponse({ links: [{ ...OWN_CUSTOMER, qrUrl: "https://affiliate.fertig-haus.net/r/FH-OTHER0000000000?qr=fhqr_customer01&v=1" }] })],
+  ["a QR payload with extra parameters", jsonResponse({ links: [{ ...OWN_CUSTOMER, qrUrl: `${OWN_CUSTOMER.qrUrl}&utm_source=x` }] })],
+  ["an unknown purpose", jsonResponse({ links: [{ ...OWN_CUSTOMER, purpose: "COMMISSION" }] })],
+])("getOwnReferralLinks returns null (never a partial list) for %s", async (_label, response) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+  expect(await getOwnReferralLinks({ partnerSessionToken: VALID_TOKEN })).toBeNull();
+});
+
+test("getOwnReferralLinks returns null when the request fails", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network")));
+  expect(await getOwnReferralLinks({ partnerSessionToken: VALID_TOKEN })).toBeNull();
 });

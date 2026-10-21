@@ -14,6 +14,8 @@ export type Seed = {
   recruitment: { code: string; qr: string; version: number; profileId: string };
   /** A locally signed session of the fixture's Business Admin (full-journey test only). */
   businessAdmin: { membershipId: string; token: string };
+  /** A Sales user with SALES programme access and a locally issued email-code session (full-journey test only). */
+  sales: { membershipId: string; token: string };
 };
 
 export const seed = JSON.parse(readFileSync(process.env.E2E_SEED_FILE ?? "", "utf8")) as Seed;

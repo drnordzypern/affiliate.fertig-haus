@@ -1,12 +1,37 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { checkPartnerSession } from "@/lib/saleschain/client";
+import QRCode from "qrcode";
+import { checkPartnerSession, getOwnReferralLinks } from "@/lib/saleschain/client";
 import { getPartnerSessionToken } from "@/lib/saleschain/session-cookie";
 import { Section } from "@/components/ui/Section";
 import { PortalNav } from "@/components/portal/PortalNav";
 import { LogoutButton } from "@/components/portal/LogoutButton";
-import { ReferralLinkCard } from "@/components/portal/ReferralLinkCard";
+import { ReferralLinkCard, type PortalReferralLink } from "@/components/portal/ReferralLinkCard";
+
+/**
+ * The Partner's own links with their QR codes, rendered here on the server
+ * from exactly the payload SalesChain returned (the QR encodes `qrUrl`). Any
+ * failure, including a QR that cannot be rendered, shows "currently not
+ * available" rather than a partial result.
+ */
+async function loadOwnLinks(partnerSessionToken: string): Promise<PortalReferralLink[] | null> {
+  const links = await getOwnReferralLinks({ partnerSessionToken });
+  if (!links) return null;
+  try {
+    return await Promise.all(
+      links.map(async (link) => ({
+        purpose: link.purpose,
+        url: link.url,
+        qrImage: link.qrUrl
+          ? await QRCode.toDataURL(link.qrUrl, { width: 512, margin: 2, errorCorrectionLevel: "M" })
+          : null,
+      }))
+    );
+  } catch {
+    return null;
+  }
+}
 
 // robots directives are inherited from app/layout.tsx's root metadata
 // (the whole site is non-indexed) — no need to repeat them here.
@@ -61,6 +86,8 @@ export default async function PortalPage() {
     redirect("/einladung");
   }
 
+  const links = await loadOwnLinks(partnerSessionToken!);
+
   return (
     <Section className="pt-16 pb-24 sm:pt-20">
       <div className="flex flex-col gap-3">
@@ -90,7 +117,8 @@ export default async function PortalPage() {
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-charcoal-500">
               Ihr Empfehlungslink ist der zentrale Ausgangspunkt für neue
-              Empfehlungen. Sobald er verfügbar ist, finden Sie ihn hier.
+              Empfehlungen. Teilen Sie den Link oder den QR-Code; Anfragen
+              darüber werden Ihnen zugeordnet.
             </p>
           </section>
 
@@ -102,7 +130,7 @@ export default async function PortalPage() {
               Empfehlungslink
             </h2>
             <div className="mt-6">
-              <ReferralLinkCard />
+              <ReferralLinkCard links={links} />
             </div>
           </section>
         </div>
