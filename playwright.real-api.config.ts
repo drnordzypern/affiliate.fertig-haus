@@ -111,6 +111,8 @@ export default defineConfig({
         STAFF_LOGIN_CODE_PEPPER: `${secret}-pepper`,
         STAFF_LOGIN_EMAIL_PROVIDER: "fake",
         STAFF_LOGIN_EMAIL_FROM: "e2e-sender@example.invalid",
+        // A Business Admin's manual retention run (the journey's last step); no worker, no schedule.
+        CRM_PRIVACY_RETENTION_EXECUTION_ENABLED: "true",
         TURNSTILE_SECRET_KEY: TURNSTILE_SECRET,
         TURNSTILE_ALLOWED_HOSTNAMES: TURNSTILE_HOSTNAME,
       },

@@ -12,6 +12,8 @@ import { footprint, installTurnstile, SALESCHAIN_API, seed, sql, unique, unlock 
 //   6. the admin assigns it to a Sales user; before that, the Sales user cannot see it
 //   7. the Sales user (email-code session) follows up: activity, next action, appointment, stage CONTACTED
 //   8. Sales stays restricted: no application decision, no partner assets
+//   9. retention without a worker: the Business Admin enables the approved 12 / 6 / 6 policy, previews and runs one
+//      manual job; only the due synthetic records are anonymized, the live journey lead is untouched
 // Commissions stay off throughout: no plan, no entry. Nothing is approved automatically.
 test.describe.configure({ mode: "serial" });
 
@@ -293,5 +295,57 @@ test("8. Sales stays restricted: no application decisions, no partner assets", a
   const assets = await admin.get(api(`/referral-assets?partnerId=${partnerId}`), { headers: asSales });
   expect([401, 403]).toContain(assets.status());
   expect(sql(`select status from "PartnerApplication" where id='${applicationId}'`)).toBe("APPROVED");
+});
+
+test("9. retention by the Business Admin (no worker): approved 12 / 6 / 6 policy, preview, one manual run", async () => {
+  // Synthetic records that are due under the approved rules: an enquiry closed without a contract 14 months ago, and a
+  // rejected application decided 7 months ago. Inserted directly (the past cannot be created through the API).
+  const brandId = sql(`select "brandId" from "Programme" where id='${seed.programmeId}'`);
+  const tag = Date.now().toString(36);
+  const oldLeadEmail = `retention-lead.${tag}@example.invalid`;
+  const oldApplicationEmail = `retention-application.${tag}@example.invalid`;
+  sql(
+    `insert into "Lead"(id,"tenantId","brandId","programmeId","publicReference","firstName","lastName",email,phone,"normalizedEmailHash","normalizedPhoneHash","emailDeduplicationKey","phoneDeduplicationKey","sourceType",stage,"createdAt","updatedAt") values (gen_random_uuid(),'${seed.tenantId}','${brandId}','${seed.programmeId}','LEAD-RET-${tag}','TEST','Retention','${oldLeadEmail}','+4915100009999',encode(sha256(convert_to('e${tag}','UTF8')),'hex'),encode(sha256(convert_to('p${tag}','UTF8')),'hex'),encode(sha256(convert_to('ek${tag}','UTF8')),'hex'),encode(sha256(convert_to('pk${tag}','UTF8')),'hex'),'WEBSITE_FORM','LOST',now()-interval '14 months',now()-interval '14 months')`,
+  );
+  sql(
+    `insert into "PartnerApplication"(id,"tenantId","programmeId","publicReference",name,email,"normalizedEmailHash",phone,"normalizedPhoneHash","partnerType","consentedAt","consentPolicyVersion",source,status,"reviewedAt","createdAt","updatedAt") values (gen_random_uuid(),'${seed.tenantId}','${seed.programmeId}','APP-RET-${tag}','TEST Retention Applicant','${oldApplicationEmail}',encode(sha256(convert_to('ae${tag}','UTF8')),'hex'),'+4917000009999',encode(sha256(convert_to('ap${tag}','UTF8')),'hex'),'PRIVATE_REFERRER',now()-interval '8 months','${seed.consentPolicyVersion}','UPGRADE_FIXTURE','REJECTED',now()-interval '7 months',now()-interval '8 months',now()-interval '7 months')`,
+  );
+
+  const privacy = (path: string) => api(`/crm-privacy${path}`);
+  // Sales may not operate retention.
+  const salesRun = await admin.post(privacy("/retention-jobs"), { headers: asSales, data: { dryRun: false } });
+  expect([401, 403]).toContain(salesRun.status());
+
+  const saved = await admin.post(privacy("/retention-policy"), {
+    headers: asAdmin,
+    data: { requestId: randomUUID(), retentionMonths: 12, applicationRetentionMonths: 6, partnerReviewMonths: 6, enabled: true },
+  });
+  expect(saved.status(), await saved.text()).toBeLessThan(300);
+
+  const preview = await admin.get(privacy("/retention-preview"), { headers: asAdmin });
+  expect(preview.status(), await preview.text()).toBe(200);
+  const counts = (await preview.json()) as { candidateCount: number; applications?: { candidateCount: number } };
+  expect(counts.candidateCount).toBeGreaterThanOrEqual(1);
+  expect(counts.applications?.candidateCount ?? 0).toBeGreaterThanOrEqual(1);
+  expect(sql(`select count(*) from "Lead" where email='${oldLeadEmail}' and "anonymizedAt" is null`), "a preview changes nothing").toBe("1");
+
+  const run = await admin.post(privacy("/retention-jobs"), { headers: asAdmin, data: { dryRun: false } });
+  expect(run.status(), await run.text()).toBeLessThan(300);
+
+  expect(sql(`select count(*) from "Lead" where email='${oldLeadEmail}'`), "the old enquiry no longer holds its e-mail").toBe("0");
+  expect(sql(`select count(*) from "Lead" where "publicReference"='LEAD-RET-${tag}' and "anonymizedAt" is not null`)).toBe("1");
+  expect(sql(`select count(*) from "PartnerApplication" where "publicReference"='APP-RET-${tag}' and "anonymizedAt" is not null`)).toBe("1");
+  expect(sql(`select count(*) from "PartnerApplication" where "publicReference"='APP-RET-${tag}' and email='${oldApplicationEmail}'`)).toBe("0");
+  // the live journey records are untouched
+  expect(sql(`select count(*) from "Lead" where id='${leadId}' and "anonymizedAt" is null and email='${customer}'`)).toBe("1");
+  expect(sql(`select count(*) from "PartnerApplication" where id='${applicationId}' and "anonymizedAt" is null`)).toBe("1");
+  expect(sql(`select count(*) from "CommissionEntry" where "tenantId"='${seed.tenantId}'`)).toBe(String(commissions));
+
+  // leave the policy disabled again, as in production until the owner enables it
+  const disabled = await admin.post(privacy("/retention-policy"), {
+    headers: asAdmin,
+    data: { requestId: randomUUID(), retentionMonths: 12, applicationRetentionMonths: 6, partnerReviewMonths: 6, enabled: false },
+  });
+  expect(disabled.status()).toBeLessThan(300);
 });
 
