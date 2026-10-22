@@ -1,20 +1,19 @@
 /**
- * Placeholder configuration point for legal document links.
- *
- * No approved Impressum or Datenschutz URL exists yet for the Partner
- * Portal. Do not invent one. Once legal provides the final documents,
- * replace these `href` values (and set `available: true`) — every place
- * that links to these documents reads from this file.
+ * Legal document links: the Impressum and Datenschutzerklärung published on
+ * fertig-haus.net, linked as they are. Every place that links to these
+ * documents reads from this file (the footer of every page). They are links
+ * only: no text from them is copied into this app, and no company detail is
+ * added to the product branding.
  */
 export const legalLinks = {
   impressum: {
     label: "Impressum",
-    href: undefined as string | undefined,
-    available: false,
+    href: "https://fertig-haus.net/impressum" as string | undefined,
+    available: true,
   },
   datenschutz: {
     label: "Datenschutz",
-    href: undefined as string | undefined,
-    available: false,
+    href: "https://fertig-haus.net/datenschutz" as string | undefined,
+    available: true,
   },
 };
