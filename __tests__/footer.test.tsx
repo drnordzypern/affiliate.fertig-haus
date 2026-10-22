@@ -2,16 +2,13 @@ import { expect, test, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Footer } from "@/components/layout/Footer";
 
-test("unapproved legal pages are omitted entirely — no dead link, no 'to follow' label", () => {
+test("links the Impressum and Datenschutz published on fertig-haus.net, under 'Rechtliches'", () => {
   render(<Footer />);
 
-  // No approved Impressum/Datenschutz URL exists yet (lib/legal-config.ts).
-  // Rather than a dead link or a visible "(folgt)" placeholder, the footer
-  // simply omits the entry until real, approved content exists.
-  expect(screen.queryByText("Impressum")).toBeNull();
-  expect(screen.queryByText("Datenschutz")).toBeNull();
+  expect(screen.getByText("Rechtliches")).toBeDefined();
+  expect(screen.getByRole("link", { name: "Impressum" }).getAttribute("href")).toBe("https://fertig-haus.net/impressum");
+  expect(screen.getByRole("link", { name: "Datenschutz" }).getAttribute("href")).toBe("https://fertig-haus.net/datenschutz");
   expect(screen.queryByText(/folgt/i)).toBeNull();
-  expect(screen.queryByText("Rechtliches")).toBeNull();
 });
 
 test("footer references fertig-haus.net without inventing legal entity details", () => {
