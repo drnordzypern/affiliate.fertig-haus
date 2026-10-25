@@ -5,9 +5,22 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Fertig Haus Partner Portal",
-    template: "%s · Fertig Haus Partner Portal",
+    default: "Fertig-Haus Affiliate System",
+    template: "%s · Fertig-Haus Affiliate System",
   },
+  applicationName: "Fertig-Haus Affiliate System",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  // Home-screen name only; no standalone mode, service worker or offline cache.
+  appleWebApp: { title: "Fertig-Haus Affiliate" },
   description:
     "Partnerportal von Fertig Haus für Empfehlungspartnerinnen und -partner. Der Zugang erfolgt ausschließlich über eine persönliche Einladung.",
   robots: {
@@ -27,6 +40,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#1a3a5b",
 };
 

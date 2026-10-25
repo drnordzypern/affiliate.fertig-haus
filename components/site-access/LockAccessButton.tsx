@@ -32,7 +32,7 @@ export function LockAccessButton() {
       type="button"
       onClick={handleLock}
       disabled={pending}
-      className="text-xs text-white/70 underline decoration-dotted underline-offset-2 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex min-h-11 items-center text-xs text-white/70 underline decoration-dotted underline-offset-2 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? "Wird gesperrt …" : "Zugang sperren"}
     </button>

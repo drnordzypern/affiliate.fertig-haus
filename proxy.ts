@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSiteAccessConfig } from "@/lib/site-access/config";
+import { isPublicBrandAsset } from "@/lib/site-access/public-assets";
 import {
   createSiteAccessCookieValue,
   SITE_ACCESS_COOKIE_NAME,
@@ -43,6 +44,13 @@ import {
 export default async function proxy(request: NextRequest): Promise<Response> {
   const { pathname } = request.nextUrl;
   const isApiPath = pathname.startsWith("/api/");
+
+  // Home-screen icon, favicons and manifest: exact paths only (see public-assets.ts). Kept out of search engines.
+  if (isPublicBrandAsset(pathname, request.method)) {
+    const asset = NextResponse.next();
+    asset.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return asset;
+  }
 
   const siteAccessConfig = getSiteAccessConfig();
   if (!siteAccessConfig) {
