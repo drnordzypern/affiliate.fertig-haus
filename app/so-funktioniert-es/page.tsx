@@ -8,7 +8,7 @@ import { StatusRegion } from "@/components/ui/StatusRegion";
 export const metadata: Metadata = {
   title: "So funktioniert es",
   description:
-    "Der geplante Ablauf des Fertig Haus Partnerprogramms – von der Bewerbung bis zur Provisionsinformation.",
+    "Der geplante Ablauf des Fertig Haus Partnerprogramms – von der Bewerbung bis zur Empfehlung.",
 };
 
 const lifecycle = [
@@ -49,9 +49,9 @@ const lifecycle = [
     status: "future" as const,
   },
   {
-    title: "Provisionsberechtigung & -auszahlung",
+    title: "Konditionen",
     description:
-      "Bei Erfüllung der vertraglichen Programmregeln erfolgen Provisionsinformation und -auszahlung gemäß den geltenden Bedingungen.",
+      "Informationen zu den Konditionen der Zusammenarbeit erhalten Sie gesondert. Diese Seite enthält keine Zusagen.",
     status: "future" as const,
   },
 ];

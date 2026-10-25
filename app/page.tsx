@@ -29,12 +29,6 @@ const processSteps = [
     description:
       "Sie sehen den Status Ihrer eingereichten Empfehlungen im Partnerportal.",
   },
-  {
-    step: "05",
-    title: "Provisionsinformationen",
-    description:
-      "Bei Erfüllung der vertraglichen Voraussetzungen erhalten Sie transparente Provisionsinformationen.",
-  },
 ];
 
 const benefits = [
@@ -122,11 +116,10 @@ export default function Home() {
               Empfehlen Sie Fertig Haus weiter – als Partnerin oder Partner.
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
-              Das Fertig Haus Partnerportal richtet sich an Menschen und
-              Organisationen, die passende Interessentinnen und Interessenten
-              verantwortungsvoll empfehlen möchten – mit einem persönlichen
-              Referral-Link, nachvollziehbarem Empfehlungsstatus und
-              transparenten Provisionsinformationen.
+              Das Partnerportal für alle, die passende Interessentinnen und
+              Interessenten verantwortungsvoll empfehlen möchten – mit
+              persönlichem Referral-Link und nachvollziehbarem
+              Empfehlungsstatus.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button href="/partner-werden" variant="cta">
@@ -166,12 +159,6 @@ export default function Home() {
                 </span>
                 Transparente Statusverfolgung Ihrer Empfehlungen
               </li>
-              <li className="flex gap-3">
-                <span aria-hidden="true" className="text-olive-600">
-                  —
-                </span>
-                Provisionsinformationen bei Erfüllung der Programmregeln
-              </li>
             </ul>
           </Card>
         </div>
@@ -181,9 +168,9 @@ export default function Home() {
         <SectionHeading
           eyebrow="Ablauf"
           title="So funktioniert es"
-          description="Vom Antrag bis zur Provisionsinformation – ein nachvollziehbarer Prozess."
+          description="Von der Bewerbung bis zur Empfehlung – ein nachvollziehbarer Prozess."
         />
-        <ol className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {processSteps.map((item) => (
             <li key={item.step}>
               <Card className="h-full p-5!">
