@@ -449,3 +449,17 @@ test("getOwnReferralLinks returns null when the request fails", async () => {
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network")));
   expect(await getOwnReferralLinks({ partnerSessionToken: VALID_TOKEN })).toBeNull();
 });
+
+test("sends the protection-bypass header only when the server-side secret is configured", async () => {
+  const response = () => jsonResponse({ status: "ACCEPTED", loginBootstrapToken: VALID_TOKEN });
+  const without = vi.fn().mockResolvedValue(response());
+  vi.stubGlobal("fetch", without);
+  await acceptInvitation({ invitationToken: VALID_TOKEN, turnstileToken: "cf-token" });
+  expect((without.mock.calls[0]![1] as { headers: Record<string, string> }).headers["x-vercel-protection-bypass"]).toBeUndefined();
+
+  vi.stubEnv("SALESCHAIN_API_PROTECTION_BYPASS", "review-bypass-secret-value");
+  const withSecret = vi.fn().mockResolvedValue(response());
+  vi.stubGlobal("fetch", withSecret);
+  await acceptInvitation({ invitationToken: VALID_TOKEN, turnstileToken: "cf-token" });
+  expect((withSecret.mock.calls[0]![1] as { headers: Record<string, string> }).headers["x-vercel-protection-bypass"]).toBe("review-bypass-secret-value");
+});
