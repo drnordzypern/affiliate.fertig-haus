@@ -113,6 +113,12 @@ export async function callSalesChain(
   if (init.authorization) {
     headers.authorization = init.authorization;
   }
+  // Optional, server-side only: a protected review deployment of the SalesChain API (Vercel Deployment Protection) answers this
+  // site's server-to-server calls only when they carry the project's protection-bypass secret. Unset in Production.
+  const protectionBypass = process.env.SALESCHAIN_API_PROTECTION_BYPASS;
+  if (protectionBypass) {
+    headers["x-vercel-protection-bypass"] = protectionBypass;
+  }
 
   try {
     const response = await fetch(url, {
