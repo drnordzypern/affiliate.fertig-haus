@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   acceptInvitation,
+  affiliatePublicHost,
   checkPartnerSession,
   getOwnReferralLinks,
   logoutPartnerSession,
@@ -462,4 +463,13 @@ test("sends the protection-bypass header only when the server-side secret is con
   vi.stubGlobal("fetch", withSecret);
   await acceptInvitation({ invitationToken: VALID_TOKEN, turnstileToken: "cf-token" });
   expect((withSecret.mock.calls[0]![1] as { headers: Record<string, string> }).headers["x-vercel-protection-bypass"]).toBe("review-bypass-secret-value");
+});
+
+test("the public host of referral links is the production host unless a test deployment configures its own bare host", () => {
+  expect(affiliatePublicHost({})).toBe("affiliate.fertig-haus.net");
+  expect(affiliatePublicHost({ AFFILIATE_PUBLIC_HOST: " Affiliate-Test.Vercel.App " })).toBe("affiliate-test.vercel.app");
+  // anything that is not a bare fully qualified host name falls back to the default, so links on an unintended host stay refused
+  for (const bad of ["https://x.vercel.app", "x.vercel.app/p", "x.vercel.app:3000", "*.vercel.app", "localhost", "10.0.2.2", "-x.vercel.app"]) {
+    expect(affiliatePublicHost({ AFFILIATE_PUBLIC_HOST: bad })).toBe("affiliate.fertig-haus.net");
+  }
 });
