@@ -20,13 +20,25 @@ export type Seed = {
 
 export const seed = JSON.parse(readFileSync(process.env.E2E_SEED_FILE ?? "", "utf8")) as Seed;
 
+// HOSTED mode (E2E_HOSTED=1): the same journey against a deployed, protected test environment (real Turnstile widget, real site password,
+// the test API). Only used by playwright.hosted.config.ts; every default below is the local behaviour. The Vercel protection-bypass secrets
+// are sent as a request header to the two test hosts only (never to third parties, never into a page or a link).
+export const HOSTED = process.env.E2E_HOSTED === "1";
 // Must equal the values in playwright.real-api.config.ts.
-export const SITE_PASSWORD = "e2e-site-access-password";
+export const SITE_PASSWORD = HOSTED ? (process.env.E2E_SITE_PASSWORD ?? "") : "e2e-site-access-password";
+export const HOSTED_API_HEADERS: Record<string, string> = HOSTED && process.env.E2E_API_BYPASS ? { "x-vercel-protection-bypass": process.env.E2E_API_BYPASS } : {};
+const HOSTED_SITE_HEADERS: Record<string, string> = HOSTED && process.env.E2E_AFFILIATE_BYPASS ? { "x-vercel-protection-bypass": process.env.E2E_AFFILIATE_BYPASS } : {};
+
+/** Hosted mode: adds the protection-bypass header to requests for the affiliate test host only. */
+export async function protectContext(context: BrowserContext, baseURL: string) {
+  if (!HOSTED || !Object.keys(HOSTED_SITE_HEADERS).length) return;
+  await context.route(`${new URL(baseURL).origin}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...HOSTED_SITE_HEADERS } }));
+}
 // The public host the API puts into referral links and QR codes. Production default; E2E_PUBLIC_HOST runs the same suite against a test host
 // (the API's PUBLIC_PORTAL_HOST and this app's AFFILIATE_PUBLIC_HOST are set to it by the Playwright configuration).
 export const TURNSTILE_HOSTNAME = process.env.E2E_PUBLIC_HOST || "affiliate.fertig-haus.net";
 /** The local SalesChain API (PORTS.api); used directly only for the Business Admin's own calls. */
-export const SALESCHAIN_API = "http://127.0.0.1:4461";
+export const SALESCHAIN_API = HOSTED ? (process.env.E2E_API_URL ?? "") : "http://127.0.0.1:4461";
 
 const PSQL = process.env.PSQL ?? "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe";
 
@@ -60,6 +72,7 @@ export async function unlock(target: BrowserContext | APIRequestContext, baseURL
   const request = "request" in target ? target.request : target;
   const response = await request.post(`${baseURL}/`, {
     form: { password: SITE_PASSWORD },
+    headers: HOSTED_SITE_HEADERS,
     maxRedirects: 0,
   });
   if (response.status() !== 303) throw new Error(`unlock failed: ${response.status()}`);
@@ -71,6 +84,7 @@ export async function unlock(target: BrowserContext | APIRequestContext, baseURL
  * render is "ok". Modes: ok | bad | wrongaction | wronghost.
  */
 export async function installTurnstile(page: Page, modes: string[] = []) {
+  if (HOSTED) return; // hosted mode uses the real Cloudflare widget
   await page.addInitScript((queue) => {
     (window as unknown as { __tsQueue: string[] }).__tsQueue = queue;
     (window as unknown as { __tsActions: string[] }).__tsActions = [];

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
-import { footprint, installTurnstile, SALESCHAIN_API, seed, sql, TURNSTILE_HOSTNAME, unique, unlock } from "./support/harness";
+import { footprint, HOSTED, HOSTED_API_HEADERS, installTurnstile, protectContext, SALESCHAIN_API, seed, sql, TURNSTILE_HOSTNAME, unique, unlock } from "./support/harness";
 
 // The whole journey, once, in order, against the REAL local SalesChain API and database:
 //   1. a visitor applies on /apply (fixture wording, Turnstile stand-in)          -> one PENDING application
@@ -44,8 +44,9 @@ let commissions = 0;
 
 test.beforeAll(async ({ browser, playwright, baseURL }) => {
   context = await browser.newContext();
+  await protectContext(context, baseURL!);
   await unlock(context, baseURL!);
-  admin = await playwright.request.newContext();
+  admin = await playwright.request.newContext({ extraHTTPHeaders: HOSTED_API_HEADERS });
   commissions = commissionsAtStart();
 });
 test.afterAll(async () => {
@@ -305,6 +306,7 @@ test("8. Sales stays restricted: no application decisions, no partner assets", a
 });
 
 test("9. retention by the Business Admin (no worker): approved 12 / 6 / 6 policy, preview, one manual run", async () => {
+  test.skip(HOSTED, "the hosted test environment keeps the retention execution switch off; this step is covered by the local run");
   // Synthetic records that are due under the approved rules: an enquiry closed without a contract 14 months ago, and a
   // rejected application decided 7 months ago. Inserted directly (the past cannot be created through the API).
   const brandId = sql(`select "brandId" from "Programme" where id='${seed.programmeId}'`);
