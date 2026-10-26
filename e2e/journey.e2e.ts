@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
-import { footprint, installTurnstile, SALESCHAIN_API, seed, sql, unique, unlock } from "./support/harness";
+import { footprint, installTurnstile, SALESCHAIN_API, seed, sql, TURNSTILE_HOSTNAME, unique, unlock } from "./support/harness";
 
 // The whole journey, once, in order, against the REAL local SalesChain API and database:
 //   1. a visitor applies on /apply (fixture wording, Turnstile stand-in)          -> one PENDING application
@@ -112,8 +112,8 @@ test("2. the Business Admin finds and approves it: Partner, customer link and QR
   expect(body.enrollment.status).toBe("APPROVED");
   const customerProfile = body.profiles.find((profile) => profile.purpose === "CUSTOMER_REFERRAL")!;
   const recruitmentProfile = body.profiles.find((profile) => profile.purpose === "PARTNER_RECRUITMENT")!;
-  expect(customerProfile.canonicalUrl).toBe(`https://affiliate.fertig-haus.net/r/${customerProfile.referralCode}`);
-  expect(recruitmentProfile.canonicalUrl).toBe(`https://affiliate.fertig-haus.net/apply/${recruitmentProfile.referralCode}`);
+  expect(customerProfile.canonicalUrl).toBe(`https://${TURNSTILE_HOSTNAME}/r/${customerProfile.referralCode}`);
+  expect(recruitmentProfile.canonicalUrl).toBe(`https://${TURNSTILE_HOSTNAME}/apply/${recruitmentProfile.referralCode}`);
   expect(customerProfile.availableForPublicIntake).toBe(true);
   const qr = customerProfile.qrAssets.find((asset) => asset.active)!;
   customerLink = { code: customerProfile.referralCode, url: customerProfile.canonicalUrl!, qr: qr.publicId, version: qr.version };
@@ -163,9 +163,16 @@ test("3. the admin issues the invitation; the partner accepts it and reaches the
   const customerOwn = links.find((link) => link.purpose === "CUSTOMER_REFERRAL")!;
   expect(customerOwn.url).toBe(customerLink.url);
   expect(customerOwn.qrUrl).toBe(`${customerLink.url}?qr=${customerLink.qr}&v=${customerLink.version}`);
+  // on a test host nothing may point to the production site: every link and QR address the partner can see stays on the test host
+  if (process.env.E2E_PUBLIC_HOST) {
+    for (const link of links) {
+      expect(link.url).not.toContain("affiliate.fertig-haus.net");
+      expect(link.qrUrl ?? "").not.toContain("affiliate.fertig-haus.net");
+    }
+  }
   portalQrUrl = customerOwn.qrUrl!;
   // the seeded partner's link is someone else's: never listed for this partner
-  expect(links.map((link) => link.url)).not.toContain(`https://affiliate.fertig-haus.net/r/${seed.customerReferral.code}`);
+  expect(links.map((link) => link.url)).not.toContain(`https://${TURNSTILE_HOSTNAME}/r/${seed.customerReferral.code}`);
   expect((await admin.get(`${SALESCHAIN_API}/v1/partner-sessions/me/referral-links`)).status(), "no session, no links").toBe(401);
   expect(
     sql(`select count(*) from "PartnerSession" s join "Partner" p on p.id=s."partnerId" where p.id='${partnerId}' and s."revokedAt" is null`),

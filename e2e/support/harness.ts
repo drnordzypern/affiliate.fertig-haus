@@ -22,7 +22,9 @@ export const seed = JSON.parse(readFileSync(process.env.E2E_SEED_FILE ?? "", "ut
 
 // Must equal the values in playwright.real-api.config.ts.
 export const SITE_PASSWORD = "e2e-site-access-password";
-export const TURNSTILE_HOSTNAME = "affiliate.fertig-haus.net";
+// The public host the API puts into referral links and QR codes. Production default; E2E_PUBLIC_HOST runs the same suite against a test host
+// (the API's PUBLIC_PORTAL_HOST and this app's AFFILIATE_PUBLIC_HOST are set to it by the Playwright configuration).
+export const TURNSTILE_HOSTNAME = process.env.E2E_PUBLIC_HOST || "affiliate.fertig-haus.net";
 /** The local SalesChain API (PORTS.api); used directly only for the Business Admin's own calls. */
 export const SALESCHAIN_API = "http://127.0.0.1:4461";
 

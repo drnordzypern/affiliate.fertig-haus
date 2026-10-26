@@ -40,7 +40,7 @@ export const PORTS = { api: 4461, shipped: 3461, fixture: 3462 };
 export const SITE_PASSWORD = "e2e-site-access-password";
 const SITE_SECRET = "e2e-site-access-secret-0123456789abcdef";
 export const TURNSTILE_SECRET = "e2e-turnstile-standin-secret";
-export const TURNSTILE_HOSTNAME = "affiliate.fertig-haus.net";
+export const TURNSTILE_HOSTNAME = process.env.E2E_PUBLIC_HOST || "affiliate.fertig-haus.net";
 
 const appEnv = (journeys: "on" | "off") => ({
   SALESCHAIN_API_BASE_URL: `http://127.0.0.1:${PORTS.api}`,
@@ -50,6 +50,8 @@ const appEnv = (journeys: "on" | "off") => ({
   AFFILIATE_PARTNER_APPLICATIONS_ENABLED: journeys === "on" ? "true" : "",
   AFFILIATE_CUSTOMER_REFERRALS_ENABLED: journeys === "on" ? "true" : "",
   E2E_CONSENT_VERSION: seed.consentPolicyVersion,
+  // empty = the production default host; E2E_PUBLIC_HOST proves the configurable test host end to end
+  AFFILIATE_PUBLIC_HOST: process.env.E2E_PUBLIC_HOST ?? "",
 });
 
 export default defineConfig({
@@ -115,6 +117,7 @@ export default defineConfig({
         CRM_PRIVACY_RETENTION_EXECUTION_ENABLED: "true",
         TURNSTILE_SECRET_KEY: TURNSTILE_SECRET,
         TURNSTILE_ALLOWED_HOSTNAMES: TURNSTILE_HOSTNAME,
+        PUBLIC_PORTAL_HOST: process.env.E2E_PUBLIC_HOST ?? "",
       },
     },
     {
