@@ -22,12 +22,14 @@ for (const [name, value] of Object.entries({ affiliate, api })) {
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "journey.e2e.ts",
-  timeout: 240_000,
+  timeout: process.env.E2E_HEADED === "1" ? 600_000 : 240_000,
   workers: 1,
   fullyParallel: false,
-  expect: { timeout: 45_000 },
+  expect: { timeout: process.env.E2E_HEADED === "1" ? 180_000 : 45_000 },
   outputDir: process.env.E2E_OUTPUT_DIR ?? "./.next/hosted-e2e-results",
   reporter: process.env.E2E_RESULTS_JSON ? [["line"], ["json", { outputFile: process.env.E2E_RESULTS_JSON }]] : [["line"]],
   use: { baseURL: affiliate, trace: "retain-on-failure", screenshot: "only-on-failure", video: process.env.E2E_VIDEO === "1" ? "on" : "off" },
-  projects: [{ name: "hosted-journey", use: { channel: "msedge" } }],
+  // E2E_HEADED=1 opens a visible browser window: the real Cloudflare Turnstile widget may show a "Verify you are human" box, which a PERSON ticks (the test never
+  // clicks, bypasses or fakes it); the test simply waits for the widget to issue its token (the expect timeout below is long enough for that).
+  projects: [{ name: "hosted-journey", use: { channel: "msedge", headless: process.env.E2E_HEADED !== "1", launchOptions: { slowMo: process.env.E2E_HEADED === "1" ? 150 : 0 } } }],
 });
