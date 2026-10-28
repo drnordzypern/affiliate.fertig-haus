@@ -6,7 +6,7 @@ import type {
 } from "react";
 
 const controlClasses =
-  "w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-charcoal-900 placeholder:text-charcoal-500/60 focus:border-olive-600 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-charcoal-500";
+  "w-full rounded-lg border border-stone-300 bg-white px-3.5 py-3 text-base text-charcoal-900 sm:py-2.5 placeholder:text-charcoal-500/60 focus:border-olive-600 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-charcoal-500";
 
 function FieldShell({
   id,

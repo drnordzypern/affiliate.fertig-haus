@@ -38,8 +38,8 @@
   --color-terracotta-100: #fbe9df;
 
   /* Call-to-action orange (white text >= 4.5:1). */
-  --color-cta: #c94e22;
-  --color-cta-hover: #ad3f18;
+  --color-cta: #b84a22;
+  --color-cta-hover: #9f3f1d;
 
   --background: var(--color-stone-50);
   --foreground: var(--color-charcoal-900);

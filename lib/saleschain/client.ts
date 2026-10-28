@@ -113,6 +113,12 @@ export async function callSalesChain(
   if (init.authorization) {
     headers.authorization = init.authorization;
   }
+  // Optional, server-side only: a protected review deployment of the SalesChain API (Vercel Deployment Protection) answers this
+  // site's server-to-server calls only when they carry the project's protection-bypass secret. Unset in Production.
+  const protectionBypass = process.env.SALESCHAIN_API_PROTECTION_BYPASS;
+  if (protectionBypass) {
+    headers["x-vercel-protection-bypass"] = protectionBypass;
+  }
 
   try {
     const response = await fetch(url, {
@@ -243,9 +249,20 @@ export async function checkPartnerSession(input: {
   }
 }
 
+// The host the API puts into referral links and QR codes. Production uses the default; a disposable HTTPS test deployment sets
+// AFFILIATE_PUBLIC_HOST (server-side) to its own bare host, matching the API's PUBLIC_PORTAL_HOST. An invalid value falls back to the default,
+// so a typo makes every link fail validation (shown as unavailable) instead of trusting an unintended host.
+const DEFAULT_AFFILIATE_PUBLIC_HOST = "affiliate.fertig-haus.net";
+const BARE_FULLY_QUALIFIED_HOST = /^(?=.{4,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
+export function affiliatePublicHost(env: Readonly<Record<string, string | undefined>> = process.env): string {
+  const configured = env.AFFILIATE_PUBLIC_HOST?.trim().toLowerCase();
+  if (!configured) return DEFAULT_AFFILIATE_PUBLIC_HOST;
+  return BARE_FULLY_QUALIFIED_HOST.test(configured) && !/^\d{1,3}(\.\d{1,3}){3}$/.test(configured) ? configured : DEFAULT_AFFILIATE_PUBLIC_HOST;
+}
+
 export type PartnerReferralLink = {
   purpose: "CUSTOMER_REFERRAL" | "PARTNER_RECRUITMENT";
-  /** The public link, always on https://affiliate.fertig-haus.net. */
+  /** The public link, on the programme's public host (https://affiliate.fertig-haus.net unless a test deployment configures its own). */
   url: string;
   /** What the QR code encodes: the link plus `qr` and `v`, or null without an active QR asset. */
   qrUrl: string | null;
@@ -264,7 +281,7 @@ function parseReferralLink(value: unknown): PartnerReferralLink | null {
   } catch {
     return null;
   }
-  if (link.protocol !== "https:" || link.host !== "affiliate.fertig-haus.net" || link.search || link.hash) return null;
+  if (link.protocol !== "https:" || link.host !== affiliatePublicHost() || link.search || link.hash) return null;
   if (!LINK_PATH[purpose].test(link.pathname)) return null;
   if (qrUrl === null) return { purpose, url: link.toString(), qrUrl: null };
   if (typeof qrUrl !== "string") return null;

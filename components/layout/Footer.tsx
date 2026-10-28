@@ -65,7 +65,7 @@ export function Footer() {
       <div className="mx-auto max-w-[1240px] px-4 md:px-6">
         <div className="flex border-t border-white/10 py-8 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-white/70">
-            © {new Date().getFullYear()} Fertig Haus Partner Portal.
+            © {new Date().getFullYear()} Fertig-Haus Affiliate System.
           </p>
           <LockAccessButton />
         </div>

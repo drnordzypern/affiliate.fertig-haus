@@ -114,14 +114,14 @@ const trustPoints = [
 export default function Home() {
   return (
     <>
-      <Section className="on-dark border-b-0 bg-olive-700 [&>div]:pt-12 [&>div]:pb-24 md:[&>div]:pt-20 md:[&>div]:pb-28">
-        <div className="grid gap-12 sm:grid-cols-[1.1fr_0.9fr] sm:items-center">
+      <Section className="on-dark border-b-0 bg-olive-700 [&>div]:pt-8 [&>div]:pb-14 md:[&>div]:pt-20 md:[&>div]:pb-28">
+        <div className="grid gap-8 sm:gap-12 sm:grid-cols-[1.1fr_0.9fr] sm:items-center">
           <div className="flex flex-col gap-6">
             <Badge tone="onDark">Fertig Haus Partnerprogramm</Badge>
-            <h1 className="text-4xl leading-tight sm:text-5xl">
+            <h1 className="text-3xl leading-tight sm:text-5xl">
               Empfehlen Sie Fertig Haus weiter – als Partnerin oder Partner.
             </h1>
-            <p className="max-w-xl text-lg leading-relaxed text-white/80">
+            <p className="max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
               Das Fertig Haus Partnerportal richtet sich an Menschen und
               Organisationen, die passende Interessentinnen und Interessenten
               verantwortungsvoll empfehlen möchten – mit einem persönlichen
@@ -183,7 +183,7 @@ export default function Home() {
           title="So funktioniert es"
           description="Vom Antrag bis zur Provisionsinformation – ein nachvollziehbarer Prozess."
         />
-        <ol className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-5">
           {processSteps.map((item) => (
             <li key={item.step}>
               <Card className="h-full p-5!">
@@ -216,7 +216,7 @@ export default function Home() {
           title="Was Partner:innen erwartet"
           description="Werkzeuge und Informationen, die eine verantwortungsvolle Empfehlung unterstützen."
         />
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map((benefit) => (
             <Card key={benefit.title}>
               <h3 className="text-base font-medium text-charcoal-900">
@@ -236,11 +236,11 @@ export default function Home() {
           title="Für wen sich das Programm eignet"
           description="Das Partnerprogramm richtet sich an unterschiedliche Netzwerke rund um den Hausbau."
         />
-        <div className="mt-12 grid gap-6 sm:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 sm:grid-cols-2">
           {audiences.map((audience) => (
             <div
               key={audience.title}
-              className="flex flex-col gap-2 border-b border-stone-200 pb-6"
+              className="flex flex-col gap-2 border-b border-stone-200 pb-4 sm:pb-6"
             >
               <h3 className="text-base font-medium text-charcoal-900">
                 {audience.title}
@@ -259,7 +259,7 @@ export default function Home() {
           title="Sorgfalt im Umgang mit Partnerdaten"
           description="Der Zugang zum Partnerbereich und die Verarbeitung von Empfehlungen folgen klaren Sicherheitsprinzipien."
         />
-        <div className="mt-12 grid gap-6 sm:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 sm:grid-cols-2">
           {trustPoints.map((point) => (
             <Card key={point.title}>
               <h3 className="text-base font-medium text-charcoal-900">

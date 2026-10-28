@@ -16,7 +16,7 @@ export function Section({
       id={id}
       className={`${tone === "muted" ? "border-y bg-white" : "border-b"} border-stone-200 ${className}`}
     >
-      <div className="mx-auto max-w-[1240px] px-4 py-20 md:px-6 md:py-24">{children}</div>
+      <div className="mx-auto max-w-[1240px] px-4 py-12 md:px-6 md:py-24">{children}</div>
     </section>
   );
 }

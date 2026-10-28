@@ -124,12 +124,7 @@ export default function PartnerWerdenPage() {
               label={
                 <>
                   Ich habe die Hinweise zur Datenverarbeitung zur Kenntnis
-                  genommen.{" "}
-                  <em className="not-italic text-charcoal-500">
-                    Vorläufiger Text – der endgültige, rechtlich geprüfte
-                    Einwilligungstext wird vor Aktivierung dieser Funktion
-                    ergänzt.
-                  </em>
+                  genommen.
                 </>
               }
             />
