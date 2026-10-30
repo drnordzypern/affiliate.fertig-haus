@@ -514,6 +514,32 @@ a BFF handler or an upstream call, because SalesChain keeps their assets apart
 | Turnstile action | `partner-application-direct` / `partner-application-referred` | `customer-referral-lead` |
 | Gate (server-only) | `AFFILIATE_PARTNER_APPLICATIONS_ENABLED` | `AFFILIATE_CUSTOMER_REFERRALS_ENABLED` |
 
+### Customer link and QR: handoff to the customer site (current behaviour of `/r/<code>`)
+
+The customer-referral column above describes the earlier form journey. `/r/<code>` no
+longer renders a form, a product list or any enquiry: houses, offers, the configurator
+and the enquiry stay on the customer site (fertig-haus.net). A Partner's personal link
+or QR still points at `/r/<code>[?qr=..&v=..&utm_*]`, so existing URLs and printed QR
+codes keep working.
+
+1. The page resolves the code through the existing referral route
+   (`resolveCustomerReferral`). SalesChain validates the asset and the QR pair and records
+   the visit in its attribution session, with the expiry it already applies.
+2. The visitor is redirected to `AFFILIATE_CUSTOMER_SITE_URL` with `ref=<attribution
+   session reference>` and the campaign values the link carried. The QR pair is not
+   forwarded. Nothing about the Partner is shown or sent.
+3. The customer site keeps its own browsing and enquiry, and passes `ref` back to
+   SalesChain unchanged (as `partnerRef`) with the enquiry, server to server. See
+   `docs/integration/` in the SalesChain repository.
+
+`AFFILIATE_CUSTOMER_SITE_URL` is configuration, not a template: https (plain http only
+for localhost), no credentials, no query or fragment; unset or invalid keeps the handoff
+closed ("not available", no upstream call). A test environment points it at its own
+customer-site stand-in, never at the live site. `AFFILIATE_CUSTOMER_REFERRALS_ENABLED`
+now only gates the earlier BFF routes (`/api/referrals/...`), which no page uses; it
+stays unset. The site-wide access boundary is unchanged: a visitor must pass it to reach
+`/r/<code>`, and opening it for customers is an owner decision.
+
 How it is built (the same rules as the invitation flow):
 
 - The browser only calls this app's own `/api/` routes; `lib/saleschain/client.ts`
