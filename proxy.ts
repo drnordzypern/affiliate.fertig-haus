@@ -17,7 +17,15 @@ import {
   RATE_LIMITED_MESSAGE,
   UNAVAILABLE_MESSAGE,
   renderAccessPageHtml,
+  renderContinuePageHtml,
 } from "@/lib/site-access/page";
+import {
+  continueTarget,
+  continueUrlFor,
+  isCustomerHandoffPath,
+  UNLOCK_CONTINUE_PARAM,
+  UNLOCK_CONTINUE_PATH,
+} from "@/lib/site-access/continue";
 import {
   htmlGateResponse,
   jsonDenyResponse,
@@ -64,6 +72,12 @@ export default async function proxy(request: NextRequest): Promise<Response> {
   const authorized = verifySiteAccessCookieValue(cookieValue, siteAccessConfig.secret);
 
   if (authorized) {
+    if (pathname === UNLOCK_CONTINUE_PATH) {
+      const target = continueTarget(request.nextUrl.searchParams.get(UNLOCK_CONTINUE_PARAM));
+      return target
+        ? htmlGateResponse(renderContinuePageHtml(target), 200)
+        : redirectAfterUnlockResponse(new URL("/", request.nextUrl));
+    }
     return NextResponse.next();
   }
 
@@ -99,8 +113,12 @@ export default async function proxy(request: NextRequest): Promise<Response> {
   // which is never sent to the server — so the follow-up request is a
   // plain GET to the same place the user was trying to reach. See
   // redirectAfterUnlockResponse's own doc comment for why this must not
-  // be 307/308.
-  const response = redirectAfterUnlockResponse(request.nextUrl);
+  // be 307/308. A Partner customer link instead continues through the
+  // same-origin continue page, so its cross-origin handoff is not part of
+  // this form submission's redirect chain (see continue.ts).
+  const response = redirectAfterUnlockResponse(
+    isCustomerHandoffPath(pathname) ? continueUrlFor(request.nextUrl) : request.nextUrl
+  );
   response.cookies.set({
     name: SITE_ACCESS_COOKIE_NAME,
     value: createSiteAccessCookieValue(siteAccessConfig.secret),

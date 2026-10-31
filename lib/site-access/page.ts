@@ -93,6 +93,32 @@ export function renderAccessPageHtml(message?: AccessPageMessage): string {
 </html>`;
 }
 
+/**
+ * The neutral continue page after unlocking a customer link (see
+ * continue.ts). No script: a meta refresh moves on to the validated
+ * same-origin target, with a plain link as the fallback.
+ */
+export function renderContinuePageHtml(target: string): string {
+  const href = escapeHtml(target);
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url=${href}">
+<title>Zugang bestätigt</title>
+<style>${BASE_STYLES}</style>
+</head>
+<body>
+<main>
+  <h1>Zugang bestätigt</h1>
+  <p class="message">Sie werden weitergeleitet.</p>
+  <p class="message"><a href="${href}">Weiter</a></p>
+</main>
+</body>
+</html>`;
+}
+
 export const ACCESS_DENIED_MESSAGE: AccessPageMessage = {
   text: "Das eingegebene Passwort ist nicht korrekt.",
   tone: "error",

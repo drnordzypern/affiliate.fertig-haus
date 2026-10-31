@@ -294,6 +294,17 @@ rendered:
    `303 See Other` back to the exact pathname + query that was originally
    requested (`lib/site-access/response.ts#redirectAfterUnlockResponse`),
    with the new `af_access` cookie attached to that same response.
+   **Exception, Partner customer links (`/r/<code>`):** the `303` goes to
+   the same-origin continue page `/zugang/weiter?ziel=/r/<code>...`
+   (`lib/site-access/continue.ts`), which moves on by a plain meta refresh.
+   The gate page's CSP keeps `form-action 'self'`, and browsers apply it to
+   every redirect that follows the password form; without this step the
+   `/r/` page's own cross-origin handoff to the customer site was part of
+   that chain and was cancelled silently (seen 30 Oct 2026 in a desktop
+   browser and on an Android phone). `ziel` only ever accepts
+   `/r/<letters, digits, - and _>` plus its query on this origin; anything
+   else goes to `/`. Other paths keep the direct `303`, which also keeps an
+   address-bar fragment such as an invitation token.
 
 Because the gate is a direct in-proxy response rather than a redirect,
 the browser's address bar never changes while the password form is
