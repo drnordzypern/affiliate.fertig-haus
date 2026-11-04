@@ -34,7 +34,7 @@ export default async function ReferralPage({
   const handoff = await customerReferralHandoff(code, referralTracking(await searchParams));
   if (handoff.status === "REDIRECT") redirect(handoff.url);
   return (
-    <Section className="pt-16 pb-24 sm:pt-20">
+    <Section>
       <div className="flex flex-col gap-10">
         <SectionHeading
           level="h1"

@@ -31,7 +31,7 @@ const cooperationContexts = [
 
 export default function PartnerWerdenPage() {
   return (
-    <Section className="pt-16 pb-24 sm:pt-20">
+    <Section>
       <div className="flex flex-col gap-3">
         <InactiveBadge />
         <SectionHeading

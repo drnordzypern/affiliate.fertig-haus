@@ -89,7 +89,7 @@ export default async function PortalPage() {
   const links = await loadOwnLinks(partnerSessionToken!);
 
   return (
-    <Section className="pt-16 pb-24 sm:pt-20">
+    <Section>
       <div className="flex flex-col gap-3">
         <h1 className="font-semibold text-3xl text-charcoal-900 sm:text-4xl">
           Partnerportal

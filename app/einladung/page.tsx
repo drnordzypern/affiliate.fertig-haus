@@ -15,7 +15,7 @@ export const metadata: Metadata = {
  */
 export default function InvitationAcceptPage() {
   return (
-    <Section className="pt-16 pb-24 sm:pt-20">
+    <Section>
       <InvitationAcceptShell />
     </Section>
   );
