@@ -121,5 +121,5 @@ export default async function proxy(request: NextRequest): Promise<Response> {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|\\.well-known/).*)"],
 };

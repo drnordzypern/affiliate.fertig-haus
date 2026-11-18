@@ -53,6 +53,8 @@ test("matcher excludes static assets and robots.txt, includes everything else", 
   expect(pattern.test("/_next/image")).toBe(false);
   expect(pattern.test("/favicon.ico")).toBe(false);
   expect(pattern.test("/robots.txt")).toBe(false);
+  expect(pattern.test("/.well-known/assetlinks.json")).toBe(false);
+  expect(pattern.test("/.well-known/apple-app-site-association")).toBe(false);
 
   expect(pattern.test("/")).toBe(true);
   expect(pattern.test("/portal")).toBe(true);
