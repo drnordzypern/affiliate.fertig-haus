@@ -52,6 +52,13 @@ export default async function proxy(request: NextRequest): Promise<Response> {
     return asset;
   }
 
+  // Explicit launch switch: only the exact value "off" lifts the boundary (checked per request, so a variable change plus redeploy is
+  // enough). Anything else, including a missing variable, keeps the gate and its fail-closed behaviour. Partner-session authorization,
+  // the BFF's own checks and the noindex headers (next.config.ts) are independent of this boundary and stay in force.
+  if (process.env.AFFILIATE_SITE_ACCESS_GATE === "off") {
+    return NextResponse.next();
+  }
+
   const siteAccessConfig = getSiteAccessConfig();
   if (!siteAccessConfig) {
     // Fail closed: with no valid configuration, no password could ever be
