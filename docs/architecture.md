@@ -294,6 +294,17 @@ rendered:
    `303 See Other` back to the exact pathname + query that was originally
    requested (`lib/site-access/response.ts#redirectAfterUnlockResponse`),
    with the new `af_access` cookie attached to that same response.
+   **Exception, Partner customer links (`/r/<code>`):** the `303` goes to
+   the same-origin continue page `/zugang/weiter?ziel=/r/<code>...`
+   (`lib/site-access/continue.ts`), which moves on by a plain meta refresh.
+   The gate page's CSP keeps `form-action 'self'`, and browsers apply it to
+   every redirect that follows the password form; without this step the
+   `/r/` page's own cross-origin handoff to the customer site was part of
+   that chain and was cancelled silently (seen 30 Oct 2026 in a desktop
+   browser and on an Android phone). `ziel` only ever accepts
+   `/r/<letters, digits, - and _>` plus its query on this origin; anything
+   else goes to `/`. Other paths keep the direct `303`, which also keeps an
+   address-bar fragment such as an invitation token.
 
 Because the gate is a direct in-proxy response rather than a redirect,
 the browser's address bar never changes while the password form is
@@ -515,6 +526,32 @@ a BFF handler or an upstream call, because SalesChain keeps their assets apart
 | Never creates | an account, partner status, a lead, a commission | an application, a commission (only documented commercial events create one) |
 | Turnstile action | `partner-application-direct` / `partner-application-referred` | `customer-referral-lead` |
 | Gate (server-only) | `AFFILIATE_PARTNER_APPLICATIONS_ENABLED` | `AFFILIATE_CUSTOMER_REFERRALS_ENABLED` |
+
+### Customer link and QR: handoff to the customer site (current behaviour of `/r/<code>`)
+
+The customer-referral column above describes the earlier form journey. `/r/<code>` no
+longer renders a form, a product list or any enquiry: houses, offers, the configurator
+and the enquiry stay on the customer site (fertig-haus.net). A Partner's personal link
+or QR still points at `/r/<code>[?qr=..&v=..&utm_*]`, so existing URLs and printed QR
+codes keep working.
+
+1. The page resolves the code through the existing referral route
+   (`resolveCustomerReferral`). SalesChain validates the asset and the QR pair and records
+   the visit in its attribution session, with the expiry it already applies.
+2. The visitor is redirected to `AFFILIATE_CUSTOMER_SITE_URL` with `ref=<attribution
+   session reference>` and the campaign values the link carried. The QR pair is not
+   forwarded. Nothing about the Partner is shown or sent.
+3. The customer site keeps its own browsing and enquiry, and passes `ref` back to
+   SalesChain unchanged (as `partnerRef`) with the enquiry, server to server. See
+   `docs/integration/` in the SalesChain repository.
+
+`AFFILIATE_CUSTOMER_SITE_URL` is configuration, not a template: https (plain http only
+for localhost), no credentials, no query or fragment; unset or invalid keeps the handoff
+closed ("not available", no upstream call). A test environment points it at its own
+customer-site stand-in, never at the live site. `AFFILIATE_CUSTOMER_REFERRALS_ENABLED`
+now only gates the earlier BFF routes (`/api/referrals/...`), which no page uses; it
+stays unset. The site-wide access boundary is unchanged: a visitor must pass it to reach
+`/r/<code>`, and opening it for customers is an owner decision.
 
 How it is built (the same rules as the invitation flow):
 

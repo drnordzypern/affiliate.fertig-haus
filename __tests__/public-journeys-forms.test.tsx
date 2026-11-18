@@ -185,6 +185,36 @@ describe("partner application form", () => {
     expect(document.body.textContent).not.toMatch(/Partner-?ID|Sponsor|eingeladen von/i);
   });
 
+  test("success: the confirmation comes into view and takes focus, with its wording and reference", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    fetchMock.mockResolvedValueOnce(res(context())).mockResolvedValueOnce(res({ status: "OK", publicReference: "PA-2026-ABCDEF0123" }));
+    direct();
+    await screen.findByRole("form");
+    fillApplication();
+    await solveTurnstile("cf-token-1");
+    fireEvent.submit(screen.getByRole("form"));
+    const heading = await screen.findByRole("heading", { name: /Vielen Dank/ });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(scroll).toHaveBeenCalledWith({ block: "start" });
+    expect(heading.className).toContain("scroll-mt-");
+    expect(screen.getByText("PA-2026-ABCDEF0123")).toBeTruthy();
+  });
+
+  test("failure: the error comes into view and takes focus", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    fetchMock.mockResolvedValueOnce(res(context())).mockResolvedValueOnce(res({ status: "UNAVAILABLE" }, 404));
+    direct();
+    await screen.findByRole("form");
+    fillApplication();
+    await solveTurnstile("cf-token-1");
+    fireEvent.submit(screen.getByRole("form"));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+    expect(scroll).toHaveBeenCalledWith({ block: "center" });
+  });
+
   test("Turnstile refusal: a generic error, answers kept, a fresh challenge, the same key on an identical retry", async () => {
     fetchMock
       .mockResolvedValueOnce(res(context()))

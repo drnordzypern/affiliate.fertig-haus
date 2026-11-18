@@ -30,7 +30,7 @@ test("with the gates unset the three pages render one heading each and an honest
   expect(screen.getByRole("heading", { level: 1, name: "Bewerbung auf Einladung" })).toBeTruthy();
   cleanup();
   render(await ReferralPage({ params: Promise.resolve({ code: CODE }), searchParams: Promise.resolve({}) }));
-  expect(screen.getByRole("heading", { level: 1, name: "Interesse anmelden" })).toBeTruthy();
+  expect(screen.getByRole("heading", { level: 1, name: "Weiterleitung zu fertig-haus.net" })).toBeTruthy();
   expect(screen.getByText("Diese Seite ist derzeit nicht verfügbar.")).toBeTruthy();
   expect(fetchMock).not.toHaveBeenCalled();
 });
@@ -61,19 +61,15 @@ test("an open gate hands the landing QR pair to the application context request,
   expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({ qr: "fhqr_public_asset", v: "2" });
 });
 
-test("an open customer gate also passes the plain campaign values", async () => {
+test("the old customer form flag no longer opens anything on /r: no form, no product list, no browser request", async () => {
   vi.stubEnv("AFFILIATE_CUSTOMER_REFERRALS_ENABLED", "true");
-  render(
+  const { container } = render(
     await ReferralPage({
       params: Promise.resolve({ code: CODE }),
       searchParams: Promise.resolve({ qr: "fhqr_public_asset", v: "1", utm_source: "newsletter", utm_medium: "email" }),
     }),
   );
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-  expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({
-    qr: "fhqr_public_asset",
-    v: "1",
-    utmSource: "newsletter",
-    utmMedium: "email",
-  });
+  expect(screen.getByText("Diese Seite ist derzeit nicht verfügbar.")).toBeTruthy();
+  expect(container.querySelector("form, input, select, button")).toBeNull();
+  expect(fetchMock).not.toHaveBeenCalled();
 });

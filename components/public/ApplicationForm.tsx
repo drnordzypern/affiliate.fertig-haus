@@ -13,6 +13,7 @@ import {
   partnerTypeOptions,
   type PublicContextOk,
 } from "./journey-ui";
+import { useRevealOutcome } from "./use-reveal-outcome";
 
 type Props = {
   /** "direct": a sponsor-free application. "referred": through a partner's recruitment link or QR. */
@@ -42,6 +43,8 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
   const [phase, setPhase] = useState<Phase>(enabled ? "loading" : "off");
   const [context, setContext] = useState<PublicContextOk | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const successHeading = useRevealOutcome<HTMLHeadingElement>(phase === "success");
+  const errorMessage = useRevealOutcome<HTMLParagraphElement>(error, "center");
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -164,7 +167,7 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
     return (
       <Card className="max-w-2xl">
         <div role="status" className="flex flex-col gap-3">
-          <h2 className="font-semibold text-xl text-charcoal-900">Vielen Dank – Ihre Bewerbung ist eingegangen.</h2>
+          <h2 ref={successHeading} tabIndex={-1} className="font-semibold text-xl text-charcoal-900 scroll-mt-24 outline-none md:scroll-mt-28">Vielen Dank – Ihre Bewerbung ist eingegangen.</h2>
           <p className="text-sm leading-relaxed text-charcoal-700">
             Ihre Bewerbung wird geprüft. Mit dieser Bewerbung entstehen weder ein Zugang noch ein Partnerstatus noch
             ein Provisionsanspruch.
@@ -218,7 +221,7 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
         <div className="flex flex-col gap-4 border-t border-stone-200 pt-6">
           <TurnstileWidget siteKey={siteKey} action={action} resetKey={resetKey} onToken={onToken} />
           {error && (
-            <p role="alert" className="text-sm font-medium text-terracotta-600">
+            <p ref={errorMessage} tabIndex={-1} role="alert" className="text-sm font-medium text-terracotta-600 outline-none">
               {error}
             </p>
           )}

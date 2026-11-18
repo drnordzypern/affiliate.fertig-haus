@@ -29,15 +29,20 @@ test("Apple: nothing configured or a malformed Team ID serves nothing", () => {
   expect(appleAssociationFor({ APPLE_APP_LINKS_TEAM_ID: "4U95296Z2C!" })).toBeNull();
 });
 
-test("Apple: the app id and exactly the four affiliate journeys", () => {
+test("Apple: the app id and exactly the two signed-in journeys, never the public QR routes", () => {
   expect(appleAssociationFor({ APPLE_APP_LINKS_TEAM_ID: "4u95296z2c" })).toEqual({
     applinks: {
       details: [
         {
           appIDs: ["4U95296Z2C.net.fertighaus.affiliate"],
-          components: [{ "/": "/r/*" }, { "/": "/apply/*" }, { "/": "/einladung" }, { "/": "/portal*" }],
+          components: [{ "/": "/einladung" }, { "/": "/portal*" }],
         },
       ],
     },
   });
+});
+
+test("Apple: the public QR routes never open the app", () => {
+  const paths = appleAssociationFor({ APPLE_APP_LINKS_TEAM_ID: "4U95296Z2C" })!.applinks.details[0].components.map((c) => c["/"]);
+  expect(paths.some((p) => p.startsWith("/r/") || p.startsWith("/apply"))).toBe(false);
 });
