@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default async function ApplyPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const tracking = qrTracking(await searchParams);
   return (
-    <Section className="pt-16 pb-24 sm:pt-20">
+    <Section>
       <div className="flex flex-col gap-10">
         <SectionHeading
           level="h1"

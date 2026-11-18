@@ -11,6 +11,7 @@ import {
 import { SalesChainConfigError } from "@/lib/saleschain/config";
 import { isSameOriginRequest } from "@/lib/security/same-origin";
 import { customerReferralsEnabled, partnerApplicationsEnabled } from "./config";
+import { customerSiteDestination, handoffUrl, type HandoffTracking } from "./handoff";
 import { anyApprovedConsent, approvedConsentText, type ConsentKind } from "./consent";
 import {
   parseApplicationBody,
@@ -218,6 +219,33 @@ export async function referredApplicationSubmit(request: Request, code: string):
 }
 
 // --- customer referral (a partner's personal link or QR) ---------------------
+
+export type CustomerHandoff =
+  | { status: "REDIRECT"; url: string }
+  | { status: "OFF" | "LINK_UNAVAILABLE" | "SERVICE_UNAVAILABLE" };
+
+/**
+ * The /r/<code> page for a Partner's customer link or QR: records the visit
+ * through SalesChain's existing attribution session and returns the customer
+ * site address to continue to. There is no form, no product list and no
+ * enquiry on this host. Closed unless AFFILIATE_CUSTOMER_SITE_URL names a
+ * valid destination; failures collapse to the same small vocabulary as the
+ * BFF (an unknown code, an inactive asset and a refused request look alike).
+ */
+export async function customerReferralHandoff(code: string, tracking: HandoffTracking & { qr?: string; v?: string }): Promise<CustomerHandoff> {
+  const destination = customerSiteDestination();
+  if (!destination) return { status: "OFF" };
+  const referralCode = parseReferralCode(code);
+  if (!referralCode) return { status: "LINK_UNAVAILABLE" };
+  try {
+    const context = await resolveCustomerReferral(referralCode, tracking);
+    if (!context.attributionCorrelationId) return { status: "SERVICE_UNAVAILABLE" };
+    return { status: "REDIRECT", url: handoffUrl(destination, context.attributionCorrelationId, tracking) };
+  } catch (error) {
+    if (error instanceof SalesChainError && error.kind === "rejected") return { status: "LINK_UNAVAILABLE" };
+    return { status: "SERVICE_UNAVAILABLE" };
+  }
+}
 
 export async function customerReferralContext(request: Request, code: string): Promise<Response> {
   if (!customerReferralsEnabled()) return unavailable();
