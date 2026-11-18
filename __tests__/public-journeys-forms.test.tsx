@@ -132,6 +132,11 @@ describe("partner application form", () => {
     const checkbox = screen.getByLabelText("fixture checkbox") as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
     expect(checkbox.required).toBe(true);
+    const notice = screen.getByRole("link", { name: "Datenschutzhinweis zur Partnerbewerbung" });
+    expect(notice.getAttribute("href")).toBe("/datenschutz-partnerbewerbung");
+    expect(notice.getAttribute("target")).toBe("_blank");
+    expect(notice.getAttribute("rel")).toContain("noopener");
+    expect(screen.getByRole("group", { name: "Datenschutz" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Bewerbung absenden" }) as HTMLButtonElement).disabled).toBe(true);
     await waitFor(() => expect(renderMock).toHaveBeenCalled());
     expect(renderMock.mock.calls[0]![1].action).toBe("partner-application-direct");

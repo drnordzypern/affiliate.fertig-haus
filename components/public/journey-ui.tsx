@@ -39,10 +39,10 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "warning";
  * The approved consent statement and its required, never pre-ticked checkbox.
  * Everything shown comes from the approved registry; nothing here is wording.
  */
-export function ConsentBlock({ id, text }: { id: string; text: ConsentText }) {
+export function ConsentBlock({ id, text, legend = "Einwilligung" }: { id: string; text: ConsentText; legend?: string }) {
   return (
     <fieldset className="flex flex-col gap-4">
-      <legend className="font-semibold text-lg text-charcoal-900">Einwilligung</legend>
+      <legend className="font-semibold text-lg text-charcoal-900">{legend}</legend>
       {text.paragraphs.map((paragraph, index) => (
         <p key={index} className="text-sm leading-relaxed text-charcoal-700">
           {paragraph}

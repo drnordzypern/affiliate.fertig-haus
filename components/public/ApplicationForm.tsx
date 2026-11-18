@@ -216,7 +216,7 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
           <TextAreaField id="message" name="message" label="Nachricht (optional)" maxLength={2000} />
         </fieldset>
 
-        <ConsentBlock id="consentToApply" text={context.consent.text} />
+        <ConsentBlock id="consentToApply" text={context.consent.text} legend="Datenschutz" />
 
         <div className="flex flex-col gap-4 border-t border-stone-200 pt-6">
           <TurnstileWidget siteKey={siteKey} action={action} resetKey={resetKey} onToken={onToken} />
@@ -228,6 +228,14 @@ export function ApplicationForm({ variant, code, tracking, enabled }: Props) {
           <Button type="submit" disabled={submitting || !turnstileToken} className="w-fit">
             {submitting ? "Wird gesendet …" : "Bewerbung absenden"}
           </Button>
+          <a
+            href="/datenschutz-partnerbewerbung"
+            target="_blank"
+            rel="noopener"
+            className="w-fit text-sm font-medium text-charcoal-900 underline underline-offset-2"
+          >
+            Datenschutzhinweis zur Partnerbewerbung
+          </a>
         </div>
       </form>
     </Card>
