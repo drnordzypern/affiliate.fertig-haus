@@ -409,3 +409,22 @@ test("every gate/deny response sets no-store and anti-indexing headers", async (
   expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   expect(response.headers.get("x-frame-options")).toBe("DENY");
 });
+
+test("AFFILIATE_SITE_ACCESS_GATE=off lifts the boundary; any other value or none keeps it", async () => {
+  vi.stubEnv("AFFILIATE_SITE_ACCESS_GATE", "off");
+  const open = await proxy(makeRequest("/"));
+  expect(open.status).toBe(200);
+  const openApi = await proxy(makeRequest("/api/anything"));
+  expect(openApi.status).toBe(200);
+
+  for (const value of ["OFF", "false", "0", "", "on"]) {
+    vi.stubEnv("AFFILIATE_SITE_ACCESS_GATE", value);
+    expect((await proxy(makeRequest("/"))).status).toBe(401);
+    expect((await proxy(makeRequest("/api/anything"))).status).toBe(401);
+  }
+
+  vi.unstubAllEnvs();
+  vi.stubEnv("AFFILIATE_SITE_ACCESS_GATE", "off");
+  // Switch off with no password configured: still open, no 503
+  expect((await proxy(makeRequest("/"))).status).toBe(200);
+});
