@@ -34,6 +34,14 @@ const CSP =
   "form-action 'self'";
 
 const nextConfig: NextConfig = {
+  // Android App Links and iOS Universal Links: the two association files are answered by routes that return 404 unless the operator configured the
+  // signing certificates (Android) or the Apple Team ID (iOS).
+  async rewrites() {
+    return [
+      { source: "/.well-known/assetlinks.json", destination: "/api/app-links/assetlinks" },
+      { source: "/.well-known/apple-app-site-association", destination: "/api/app-links/apple-association" },
+    ];
+  },
   async headers() {
     return [
       {

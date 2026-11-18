@@ -424,6 +424,8 @@ record:
 3. **Plan restriction:** whether the current Vercel plan includes
    Deployment Protection was not checked (out of scope) — verify manually
    before relying on it.
+4a. **Launch switch (18 Nov 2026):** `AFFILIATE_SITE_ACCESS_GATE=off` (exact value) lifts this boundary after a redeploy. Any other value, or none,
+   keeps the gate and its fail-closed behaviour. Partner-session checks and the noindex headers do not depend on the boundary.
 4. **Manual post-merge checklist:** add `AFFILIATE_SITE_ACCESS_PASSWORD`
    and `AFFILIATE_SITE_ACCESS_SECRET` to the Vercel project's environment
    variables (Production, and Preview if those should also be gated);
