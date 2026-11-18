@@ -32,10 +32,13 @@ describe("feature gates", () => {
 });
 
 describe("consent wording registry", () => {
-  test("no wording is approved: the shipped registry is empty", () => {
-    expect(Object.keys(approvedConsentTexts)).toEqual([]);
-    expect(approvedConsentText("partnerApplication", "any-version")).toBeNull();
-    expect(approvedConsentText("customerReferral", "any-version")).toBeNull();
+  test("only the partner-application acknowledgement is approved, and only for the version the Test Brand reports", () => {
+    expect(Object.keys(approvedConsentTexts)).toEqual(["e2e-local-policy-2026-10"]);
+    const entry = approvedConsentText("partnerApplication", "e2e-local-policy-2026-10");
+    expect(entry?.checkboxLabel).toBe("Ich habe den Datenschutzhinweis zur Partnerbewerbung gelesen.");
+    expect(entry?.paragraphs).toHaveLength(1);
+    expect(approvedConsentText("partnerApplication", "any-other-version")).toBeNull();
+    expect(approvedConsentText("customerReferral", "e2e-local-policy-2026-10")).toBeNull();
   });
 
   test("prototype keys are never mistaken for an approved version", () => {
