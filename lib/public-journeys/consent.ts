@@ -36,6 +36,16 @@ export const approvedConsentTexts: Readonly<Record<string, ApprovedConsent>> = {
   // Partner application only: an acknowledgement of the notice, not a consent statement. Keyed by the version the
   // Test Brand reports (read from the Test CRM, 18 Nov 2026). The Production Brand needs its own entry once its
   // version is known; no customer-referral wording is approved.
+  // Production Brand (approved by the owner 19 Nov 2026): the same agreed wording. Applies only once the Brand reports this
+  // exact version; until the activation SQL has set it, the form stays closed.
+  "fh-partnerprogramm-1": {
+    partnerApplication: {
+      paragraphs: [
+        "Wir verwenden Ihre Angaben, um Ihre Bewerbung zu prüfen und Sie dazu zu kontaktieren. Einzelheiten finden Sie im Datenschutzhinweis zur Partnerbewerbung.",
+      ],
+      checkboxLabel: "Ich habe den Datenschutzhinweis zur Partnerbewerbung gelesen.",
+    },
+  },
   "e2e-local-policy-2026-10": {
     partnerApplication: {
       paragraphs: [

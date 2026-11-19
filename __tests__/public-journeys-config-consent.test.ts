@@ -33,7 +33,10 @@ describe("feature gates", () => {
 
 describe("consent wording registry", () => {
   test("only the partner-application acknowledgement is approved, and only for the version the Test Brand reports", () => {
-    expect(Object.keys(approvedConsentTexts)).toEqual(["e2e-local-policy-2026-10"]);
+    expect(Object.keys(approvedConsentTexts).sort()).toEqual(["e2e-local-policy-2026-10", "fh-partnerprogramm-1"]);
+    const production = approvedConsentText("partnerApplication", "fh-partnerprogramm-1");
+    expect(production).toEqual(approvedConsentText("partnerApplication", "e2e-local-policy-2026-10"));
+    expect(approvedConsentText("customerReferral", "fh-partnerprogramm-1")).toBeNull();
     const entry = approvedConsentText("partnerApplication", "e2e-local-policy-2026-10");
     expect(entry?.checkboxLabel).toBe("Ich habe den Datenschutzhinweis zur Partnerbewerbung gelesen.");
     expect(entry?.paragraphs).toHaveLength(1);
